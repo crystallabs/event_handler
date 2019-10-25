@@ -34,8 +34,9 @@ module Crysterm
 				def once(*arg) add_once(*arg) end
 
 				def off(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
-					_event_{{event_name}}.delete Handler.new handler
-				 emit RemoveListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+					if _event_{{event_name}}.delete Handler.new handler
+					 emit RemoveListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+					end
 				end
 
 				def removeAllListeners
