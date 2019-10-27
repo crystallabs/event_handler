@@ -2,7 +2,7 @@ require "./spec_helper"
 
 class_record ClickedEvent < ::Crysterm::Event, x : Int32, y : Int32
 
-require "../src/event_emitter"
+require "../src/crysterm_post"
 
 module Crysterm
 
@@ -68,7 +68,7 @@ module Crysterm
       count.should eq 1
 
       c.emit ClickedEvent, 1,1
-      c.emit ClickedEvent, 1,1
+      c.emit ClickedEvent, ClickedEvent.new 1,1
       count.should eq 3
 
       c.removeAllListeners(ClickedEvent)

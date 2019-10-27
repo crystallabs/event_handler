@@ -91,13 +91,12 @@ module Crysterm
         end
 
         # Emits event *type*, along with supplied parameters.
-        def emit(type : {{e.id}}.class, *args)
-          obj =  {{e.id}}.new *args
+        def emit(type : {{e.id}}.class, obj : Event)
           _emit EventEvent, {{e.id}}, obj
 
           # TODO - enable when Node is added
           #if @type == :screen
-          # return _emit(type, *args)
+          # return _emit type, *args
           #end
 
           if _emit(type, obj) == false
@@ -108,6 +107,11 @@ module Crysterm
           # Add "Element..." events
 
           true
+        end
+        # ditto
+        def emit(type : {{e.id}}.class, *args)
+          obj =  {{e.id}}.new *args
+          emit type, obj
         end
       {% end %}
     {% end %}
