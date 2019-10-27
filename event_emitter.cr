@@ -1,6 +1,6 @@
 module Crysterm
-  # Implementation of Crysterm's event system, and basically the functional core of Crysterm.
-  # `EventEmitter` is used by `Node`, the class at the lowest level.
+  # Implementation of Crysterm's event system, and the functional core of Crysterm.
+  # The first low-level class build on `EventEmitter` is `Node`, and everything else inherits from `Node`.
   module EventEmitter
 
     # Record for easy and convenient creation of handler procs.
@@ -8,9 +8,8 @@ module Crysterm
     # If *run_once* is true, handler will be automatically removed after it is invoked once.
     #
     # ```
-    # handler = ClickedEvent::Handler.new { |e| p "Coordinates are x=#{e.x} y=#{e.y}"; true }
-    #
     # c = SomeClass.new
+    # handler = ClickedEvent::Handler.new { |e| p "Coordinates are x=#{e.x} y=#{e.y}"; true }
     # c.on ClickedEvent, handler
     # ```
     record Handler(T), handler : T, run_once : Bool = false do
