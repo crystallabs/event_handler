@@ -3,7 +3,7 @@ require "../src/events"
 # The above include file defines the most basic events required for the system to work.
 
 # Let's define an additional event that we need. Let's say it represents a mouse click and gives us the x and y values of the click:
-record ClickedEvent < ::Crysterm::Event, x : Int32, y : Int32
+class_record ClickedEvent < ::Crysterm::Event, x : Int32, y : Int32
 
 # After we have defined any/all new events we need, we can include the event emitter and cause macros for all events to run:
 require "../src/event_emitter"

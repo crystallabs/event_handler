@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-record ClickedEvent < ::Crysterm::Event, x : Int32, y : Int32
+class_record ClickedEvent < ::Crysterm::Event, x : Int32, y : Int32
 
 require "../src/event_emitter"
 
@@ -90,6 +90,16 @@ module Crysterm
       expect_raises Exception do
         c.emit(::Crysterm::ErrorEvent, "Big error message")
       end
+    end
+
+    it "emits EventEvents" do
+      count = 0
+      c = TestEvents.new
+
+      c.on(ClickedEvent){|e| true}
+      c.on(::Crysterm::EventEvent){|e| count += 1; true}
+      c.emit ClickedEvent, 1,1
+      count.should eq 1
     end
 
   end

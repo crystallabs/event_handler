@@ -27,7 +27,7 @@ module Crysterm
 
         private def internal_add(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool), once : Bool)
          _event_{{event_name}} << Handler(Proc({{e.id}}, Bool)).new handler, once
-         emit NewListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+         _emit NewListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
         end
 
         # Installs *handler* as a handler for event of type *type*.
@@ -52,7 +52,7 @@ module Crysterm
         # Uninstalls *handler* as a handler for event of type *type*.
         def off(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
           if _event_{{event_name}}.delete Handler.new handler
-           emit RemoveListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+           _emit RemoveListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
           end
         end
 
@@ -87,19 +87,20 @@ module Crysterm
         end
         # ditto
         private def _emit(type : {{class_name}}.class, *args)
-          emit type, {{e.id}}.new *args
+          _emit type, {{e.id}}.new *args
         end
 
         # Emits event *type*, along with supplied parameters.
         def emit(type : {{e.id}}.class, *args)
-         #emit EventEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+          obj =  {{e.id}}.new *args
+          _emit EventEvent, {{e.id}}, obj
 
           # TODO - enable when Node is added
           #if @type == :screen
           # return _emit(type, *args)
           #end
 
-          if _emit(type, *args) == false
+          if _emit(type, obj) == false
             return false
           end
 
