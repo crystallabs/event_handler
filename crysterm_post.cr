@@ -3,3 +3,4 @@
 require "./event_emitter"
 
 require "./widgets/node"
+require "./widgets/screen"
