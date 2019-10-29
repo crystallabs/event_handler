@@ -33,7 +33,7 @@ module Crysterm
         def on(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
           internal_add type, handler, false
         end
-        # ditto
+        # :ditto:
         def on(type : {{e.id}}.class, &handler : {{e.id}} -> Bool)
           on type, handler
         end
@@ -43,7 +43,7 @@ module Crysterm
         def once(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
           internal_add type, handler, true
         end
-        # ditto
+        # :ditto:
         def once(type : {{e.id}}.class, &handler : {{e.id}} -> Bool)
           once type, handler
         end
@@ -84,7 +84,7 @@ module Crysterm
 
           ret != false
         end
-        # ditto
+        # :ditto:
         private def _emit(type : {{class_name}}.class, *args)
           _emit type, {{e.id}}.new *args
         end
@@ -107,7 +107,7 @@ module Crysterm
 
           true
         end
-        # ditto
+        # :ditto:
         def emit(type : {{e.id}}.class, *args)
           obj =  {{e.id}}.new *args
           emit type, obj
