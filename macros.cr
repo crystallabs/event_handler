@@ -60,3 +60,9 @@ macro class_record(name, *properties)
     end
   end
 end
+
+# And this one is a shorthand for creating events.
+macro event(e, *args)
+  class_record {{e.id}} < ::Crysterm::Event, {{ *args }}
+  class_record {{e.id}}::Element < ::Crysterm::Event, event : {{e.id}}
+end

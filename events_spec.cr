@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-class_record ClickedEvent < ::Crysterm::Event, x : Int32, y : Int32
+event ClickedEvent, x : Int32, y : Int32
 
 require "../src/crysterm_post"
 

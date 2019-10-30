@@ -22,6 +22,10 @@ module Crysterm
         {% event_name = e.name.identify.downcase.split('(').first.id %}
         {% class_name = e.name.split('(').first.id %}
 
+        def {{e.id}}.element
+          {{e.id}}::Element
+        end
+
         private getter _event_{{event_name}} = Array(Handler(Proc({{e.id}}, Bool))).new
 
         private def internal_add(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool), once : Bool)
@@ -69,7 +73,7 @@ module Crysterm
 
         # Low-level function used to execute handlers and almost nothing else.
         # Regular users should use `#emit` instead.
-        private def _emit(type : {{class_name}}.class, obj : {{class_name}})
+        protected def _emit(type : {{class_name}}.class, obj : {{class_name}})
           if _event_{{event_name}}.empty?
             if type == ErrorEvent
               raise Exception.new obj.to_s
@@ -85,7 +89,7 @@ module Crysterm
           ret != false
         end
         # :ditto:
-        private def _emit(type : {{class_name}}.class, *args)
+        protected def _emit(type : {{class_name}}.class, *args)
           _emit type, {{e.id}}.new *args
         end
 
@@ -93,17 +97,13 @@ module Crysterm
         def emit(type : {{e.id}}.class, obj : Event)
           _emit EventEvent, {{e.id}}, obj
 
-          # TODO - enable when Node is added
-          #if @type == :screen
-          # return _emit type, *args
-          #end
+          if type == :screen
+           return _emit(type, obj)
+          end
 
           if _emit(type, obj) == false
             return false
           end
-
-          # TODO
-          # Add "Element..." events
 
           true
         end
