@@ -3,6 +3,7 @@
 require "./event_emitter"
 
 require "./program"
+require "./gpmclient"
 
 require "./widgets/node"
 require "./widgets/screen"
