@@ -2,5 +2,7 @@
 
 require "./event_emitter"
 
+require "./program"
+
 require "./widgets/node"
 require "./widgets/screen"
