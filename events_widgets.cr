@@ -18,4 +18,15 @@ module Crysterm
   event BlurEvent
   event WarningEvent,  text : String
 
+  event MouseEvent
+  event ClickEvent
+  event MouseOverEvent
+  event MouseOutEvent
+  event MouseDownEvent
+  event MouseUpEvent
+  event MouseWheelEvent
+  event WheelDownEvent
+  event WheelUpEvent
+  event MouseMoveEvent
+
 end
