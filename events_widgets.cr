@@ -13,4 +13,9 @@ module Crysterm
   event RemoveEvent,   element : ::Crysterm::Widgets::Node
   event DestroyEvent
 
+  event ResizeEvent
+  event FocusEvent
+  event BlurEvent
+  event WarningEvent,  text : String
+
 end
