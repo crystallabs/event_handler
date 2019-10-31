@@ -63,6 +63,6 @@ end
 
 # And this one is a shorthand for creating events.
 macro event(e, *args)
-  class_record {{e.id}} < ::Crysterm::Event, {{ *args }}
+  class_record {{e.id}} < ::Crysterm::Event{% if args.size > 0 %}, {{ *args }}{% end %}
   class_record {{e.id}}::Element < ::Crysterm::Event, event : {{e.id}}
 end
