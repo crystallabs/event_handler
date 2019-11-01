@@ -34,21 +34,27 @@ module Crysterm
         end
 
         # Installs *handler* as a handler for event of type *type*.
-        def on(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool), at = -1)
+        def on(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
+        #def on(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool)), at = -1)
+          at = -1
           internal_insert at, type, handler, false
         end
         # :ditto:
-        def on(type : {{e.id}}.class, at = -1, &handler : {{e.id}} -> Bool)
+        def on(type : {{e.id}}.class, &handler : {{e.id}} -> Bool)
+        #def on(type : {{e.id}}.class, at = -1, &handler : {{e.id}} -> Bool)
           on type, handler
         end
 
         # Installs *handler* as a handler for event of type *type*.
         # It triggers it at most once, after which the handler is automatically removed.
-        def once(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool), at = -1)
+        def once(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
+        #def once(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool), at = -1)
+          at = -1
           internal_insert at, type, handler, true
         end
         # :ditto:
-        def once(type : {{e.id}}.class, at = -1, &handler : {{e.id}} -> Bool)
+        def once(type : {{e.id}}.class, &handler : {{e.id}} -> Bool)
+        #def once(type : {{e.id}}.class, at = -1, &handler : {{e.id}} -> Bool)
           once type, handler
         end
 
