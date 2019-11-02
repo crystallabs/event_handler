@@ -102,5 +102,9 @@ module Crysterm
       count.should eq 1
     end
 
+    # TODO missing test for adding events at non-end of queue.
+    # (And tests are missing because front-facing functions to
+    # add them elsewhere are also missing.)
+
   end
 end
