@@ -36,4 +36,7 @@ module Crysterm
   event BlurEvent, element : ::Crysterm::Widgets::Node?
   event FocusEvent, element : ::Crysterm::Widgets::Node?
 
+  event PreRenderEvent
+  event RenderEvent
+
 end
