@@ -14,8 +14,6 @@ module Crysterm
   event DestroyEvent
 
   event ResizeEvent
-  event FocusEvent
-  event BlurEvent
   event WarningEvent,  text : String
 
   event MouseEvent
@@ -28,5 +26,14 @@ module Crysterm
   event WheelDownEvent
   event WheelUpEvent
   event MouseMoveEvent
+
+  event UncaughtExceptionEvent, exception : Exception
+  event SigTermEvent
+  event SigIntEvent
+  event SigQuitEvent
+  event ExitEvent
+
+  event BlurEvent, element : ::Crysterm::Widgets::Node?
+  event FocusEvent, element : ::Crysterm::Widgets::Node?
 
 end
