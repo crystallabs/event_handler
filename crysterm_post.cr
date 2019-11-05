@@ -8,3 +8,4 @@ require "./gpmclient"
 
 require "./widgets/node"
 require "./widgets/screen"
+require "./widgets/element"
