@@ -16,7 +16,7 @@ module Crysterm
   event ResizeEvent
   event WarningEvent,  text : String
 
-  event MouseEvent
+  event MouseEvent,    x : Int32, y : Int32
   event ClickEvent
   event MouseOverEvent
   event MouseOutEvent
