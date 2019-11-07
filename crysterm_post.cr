@@ -3,6 +3,9 @@
 require "./events_widgets"
 require "./event_emitter"
 
+require "./stream"
+require "./keys"
+
 require "./program"
 require "./gpmclient"
 

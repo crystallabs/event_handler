@@ -118,6 +118,7 @@ module Crysterm
           obj =  {{e.id}}.new *args
           emit type, obj
         end
+
       {% end %}
     {% end %}
   end

@@ -39,4 +39,8 @@ module Crysterm
   event PreRenderEvent
   event RenderEvent
 
+  alias Key = NamedTuple(sequence: String, name: String?, code: String?, ctrl: Bool, meta: Bool, shift: Bool)
+
+  event KeypressEvent, ch : String?, key : Key?
+
 end
