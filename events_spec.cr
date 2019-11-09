@@ -92,12 +92,12 @@ module Crysterm
       end
     end
 
-    it "emits EventEvents" do
+    it "emits AnyEvents" do
       count = 0
       c = TestEvents.new
 
       c.on(ClickedEvent){|e| true}
-      c.on(::Crysterm::EventEvent){|e| count += 1; true}
+      c.on(::Crysterm::AnyEvent){|e| count += 1; true}
       c.emit ClickedEvent, 1,1
       count.should eq 1
     end

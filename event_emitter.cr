@@ -101,7 +101,7 @@ module Crysterm
 
         # Emits event *type*, along with supplied parameters.
         def emit(type : {{e.id}}.class, obj : Event)
-          _emit EventEvent, {{e.id}}, obj
+          _emit AnyEvent, {{e.id}}, obj
 
           if type == :screen
            return _emit(type, obj)

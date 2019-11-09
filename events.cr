@@ -41,9 +41,12 @@ c.emit ClickedEvent, 1, 2
 # Option 2, with event, and arguments packed into the event:
 c.emit ClickedEvent, ClickedEvent.new 3, 4
 
-# In addition to this, there are some "special" events, namely NewHandlerEvent, RemoveHandlerEvent, and EventEvent.
+# In addition to this, there are some "special" events, namely NewHandlerEvent, RemoveHandlerEvent, and AnyEvent.
 # The first run whenever any handler is added on object; the second when any is removed.
-# (The third (EventEvent) should be emitted when any event is emitted, but currently it is not functioning.)
+# The third (AnyEvent) is emitted when any one event is emitted.
+
+# Add listener on AnyEvent:
+c.on(::Crysterm::AnyEvent) { |e| p "Listening for all events, and noticed event #{e.class} emitted"; true }
 
 # So, to listen for removals of handlers, we would do it like this:
 c.on(::Crysterm::RemoveHandlerEvent){|e| p "Handler #{e.handler} was just removed for event #{e.event}!"; true}
@@ -58,7 +61,7 @@ c.off(ClickedEvent, handler)
 c.remove_all_handlers(ClickedEvent)
 
 # Add a handler for ExceptionEvent, and see that it will receive the emitted exception
-c.on(::Crysterm::ExceptionEvent) { |e| STDERR.puts "Running exception handler: #{e.exception.to_s}"; true }
+c.on(::Crysterm::ExceptionEvent) { |e| p "Running exception handler: #{e.exception.to_s}"; true }
 c.emit(::Crysterm::ExceptionEvent, Exception.new "Example of a handled exception; it won't raise")
 
 # Remove the handlers for ExceptionEvent, and see that the unhandled ExceptionEvent will be raised
