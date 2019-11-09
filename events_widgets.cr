@@ -16,6 +16,7 @@ module Crysterm
   event ResizeEvent
   event WarningEvent,  text : String
 
+  # Mouse
   event MouseEvent,    x : Int32, y : Int32
   event ClickEvent
   event MouseOverEvent
@@ -26,6 +27,7 @@ module Crysterm
   event WheelDownEvent
   event WheelUpEvent
   event MouseMoveEvent
+  event GpmDataEvent,  data : Bytes
 
   event UncaughtExceptionEvent, exception : Exception
   event SigTermEvent

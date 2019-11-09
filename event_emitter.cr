@@ -81,8 +81,8 @@ module Crysterm
         # Regular users should use `#emit` instead.
         protected def _emit(type : {{class_name}}.class, obj : {{class_name}})
           if _event_{{event_name}}.empty?
-            if type == ErrorEvent
-              raise Exception.new obj.to_s
+            if type == ExceptionEvent && obj.is_a? ExceptionEvent
+              raise obj.e
             end
           end
 

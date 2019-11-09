@@ -75,20 +75,20 @@ module Crysterm
       c.listeners(ClickedEvent).should be_empty
     end
 
-    it "raises if no handlers for ErrorEvent" do
+    it "raises if no handlers for ExceptionEvent" do
       count = 0
       c = TestEvents.new
 
-      c.on(::Crysterm::ErrorEvent){|e| count += 1; true}
+      c.on(::Crysterm::ExceptionEvent){|e| count += 1; true}
       count.should eq 0
 
-      c.emit(::Crysterm::ErrorEvent, "Big error message")
+      c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))
       count.should eq 1
 
-      c.removeAllListeners(::Crysterm::ErrorEvent)
+      c.removeAllListeners(::Crysterm::ExceptionEvent)
 
       expect_raises Exception do
-        c.emit(::Crysterm::ErrorEvent, "Big error message")
+        c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))
       end
     end
 
