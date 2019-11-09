@@ -67,7 +67,7 @@ module Crysterm
 
         # Removes all handlers for *type*.
         # The removal is immediate, and no `RemoveListenerEvent` events are emitted.
-        def removeAllListeners(type : {{e.id}}.class)
+        def remove_all_listeners(type : {{e.id}}.class)
           # Blessed does it this way by just emptying the handlers, without emitting any RemoveListenerEvents
           _event_{{event_name}}.clear
         end
@@ -82,7 +82,7 @@ module Crysterm
         protected def _emit(type : {{class_name}}.class, obj : {{class_name}})
           if _event_{{event_name}}.empty?
             if type == ExceptionEvent && obj.is_a? ExceptionEvent
-              raise obj.e
+              raise obj.exception
             end
           end
 

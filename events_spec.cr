@@ -54,7 +54,7 @@ module Crysterm
       c.off(NewListenerEvent, h2)
       count.should eq 7
 
-      c.removeAllListeners(NewListenerEvent)
+      c.remove_all_listeners(NewListenerEvent)
       c.listeners(NewListenerEvent).should be_empty
     end
 
@@ -71,7 +71,7 @@ module Crysterm
       c.emit ClickedEvent, ClickedEvent.new 1,1
       count.should eq 3
 
-      c.removeAllListeners(ClickedEvent)
+      c.remove_all_listeners(ClickedEvent)
       c.listeners(ClickedEvent).should be_empty
     end
 
@@ -85,7 +85,7 @@ module Crysterm
       c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))
       count.should eq 1
 
-      c.removeAllListeners(::Crysterm::ExceptionEvent)
+      c.remove_all_listeners(::Crysterm::ExceptionEvent)
 
       expect_raises Exception do
         c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))

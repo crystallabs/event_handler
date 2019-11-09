@@ -53,3 +53,14 @@ c.on(::Crysterm::NewListenerEvent){|e| p "Handler #{e.handler} was just added fo
 
 # And when we remove a handler, this will trigger the RemoveListenerEvent listener:
 c.off(ClickedEvent, handler)
+
+# Remove all listeners currently registered for ClickedEvent
+c.remove_all_listeners(ClickedEvent)
+
+# Add a handler for ExceptionEvent, and see that it will receive the emitted exception
+c.on(::Crysterm::ExceptionEvent) { |e| STDERR.puts "Running exception handler: #{e.exception.to_s}"; true }
+c.emit(::Crysterm::ExceptionEvent, Exception.new "Example of a handled exception; it won't raise")
+
+# Remove the handlers for ExceptionEvent, and see that the unhandled ExceptionEvent will be raised
+c.remove_all_listeners(::Crysterm::ExceptionEvent)
+c.emit(::Crysterm::ExceptionEvent, Exception.new "Example of an unhandled exception; it will raise (NOT A BUG, IT IS AN EXAMPLE)")
