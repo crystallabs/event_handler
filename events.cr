@@ -41,26 +41,26 @@ c.emit ClickedEvent, 1, 2
 # Option 2, with event, and arguments packed into the event:
 c.emit ClickedEvent, ClickedEvent.new 3, 4
 
-# In addition to this, there are some "special" events, namely NewListenerEvent, RemoveListenerEvent, and EventEvent.
-# The first run whenever any listener is added on object; the second when any is removed.
+# In addition to this, there are some "special" events, namely NewHandlerEvent, RemoveHandlerEvent, and EventEvent.
+# The first run whenever any handler is added on object; the second when any is removed.
 # (The third (EventEvent) should be emitted when any event is emitted, but currently it is not functioning.)
 
-# So, to listen for removals of listeners, we would do it like this:
-c.on(::Crysterm::RemoveListenerEvent){|e| p "Handler #{e.handler} was just removed for event #{e.event}!"; true}
+# So, to listen for removals of handlers, we would do it like this:
+c.on(::Crysterm::RemoveHandlerEvent){|e| p "Handler #{e.handler} was just removed for event #{e.event}!"; true}
 
-# To listen for additions of listeners, we would do it like this (This will trigger even for our own adding ourselves):
-c.on(::Crysterm::NewListenerEvent){|e| p "Handler #{e.handler} was just added for event #{e.event}!"; true}
+# To listen for additions of handlers, we would do it like this (This will trigger even for our own adding ourselves):
+c.on(::Crysterm::NewHandlerEvent){|e| p "Handler #{e.handler} was just added for event #{e.event}!"; true}
 
-# And when we remove a handler, this will trigger the RemoveListenerEvent listener:
+# And when we remove a handler, this will trigger the RemoveHandlerEvent handler:
 c.off(ClickedEvent, handler)
 
-# Remove all listeners currently registered for ClickedEvent
-c.remove_all_listeners(ClickedEvent)
+# Remove all handlers currently registered for ClickedEvent
+c.remove_all_handlers(ClickedEvent)
 
 # Add a handler for ExceptionEvent, and see that it will receive the emitted exception
 c.on(::Crysterm::ExceptionEvent) { |e| STDERR.puts "Running exception handler: #{e.exception.to_s}"; true }
 c.emit(::Crysterm::ExceptionEvent, Exception.new "Example of a handled exception; it won't raise")
 
 # Remove the handlers for ExceptionEvent, and see that the unhandled ExceptionEvent will be raised
-c.remove_all_listeners(::Crysterm::ExceptionEvent)
+c.remove_all_handlers(::Crysterm::ExceptionEvent)
 c.emit(::Crysterm::ExceptionEvent, Exception.new "Example of an unhandled exception; it will raise (NOT A BUG, IT IS AN EXAMPLE)")

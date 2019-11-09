@@ -18,44 +18,44 @@ module Crysterm
     it "works for builtin events" do
       count = 0
       c = TestEvents.new
-      c.on(NewListenerEvent){|e| count += 1; true}
+      c.on(NewHandlerEvent){|e| count += 1; true}
       count.should eq 1
 
-      c.listeners(NewListenerEvent).size.should eq 1
+      c.handlers(NewHandlerEvent).size.should eq 1
 
-      h1 = ->(e : NewListenerEvent) { count += 1; true}
-      c.on NewListenerEvent, h1
+      h1 = ->(e : NewHandlerEvent) { count += 1; true}
+      c.on NewHandlerEvent, h1
       count.should eq 3
 
-      c.listeners(NewListenerEvent).size.should eq 2
+      c.handlers(NewHandlerEvent).size.should eq 2
 
-      h2 = NewListenerEvent::Handler.new { count += 1; true}
-      c.on NewListenerEvent, h2
+      h2 = NewHandlerEvent::Handler.new { count += 1; true}
+      c.on NewHandlerEvent, h2
       count.should eq 6
 
-      c.listeners(NewListenerEvent).size.should eq 3
+      c.handlers(NewHandlerEvent).size.should eq 3
 
-      c.on(RemoveListenerEvent){|e| count -= 1; true}
+      c.on(RemoveHandlerEvent){|e| count -= 1; true}
       count.should eq 9
 
-      c.listeners(RemoveListenerEvent).size.should eq 1
+      c.handlers(RemoveHandlerEvent).size.should eq 1
 
-      c.off(NewListenerEvent, h1)
+      c.off(NewHandlerEvent, h1)
       count.should eq 8
 
-      c.listeners(NewListenerEvent).size.should eq 2
+      c.handlers(NewHandlerEvent).size.should eq 2
 
-      c.off(NewListenerEvent, h2)
+      c.off(NewHandlerEvent, h2)
       count.should eq 7
 
-      c.listeners(NewListenerEvent).size.should eq 1
+      c.handlers(NewHandlerEvent).size.should eq 1
 
       # Already removed, so shouldn't change anything
-      c.off(NewListenerEvent, h2)
+      c.off(NewHandlerEvent, h2)
       count.should eq 7
 
-      c.remove_all_listeners(NewListenerEvent)
-      c.listeners(NewListenerEvent).should be_empty
+      c.remove_all_handlers(NewHandlerEvent)
+      c.handlers(NewHandlerEvent).should be_empty
     end
 
     it "works for custom events" do
@@ -71,8 +71,8 @@ module Crysterm
       c.emit ClickedEvent, ClickedEvent.new 1,1
       count.should eq 3
 
-      c.remove_all_listeners(ClickedEvent)
-      c.listeners(ClickedEvent).should be_empty
+      c.remove_all_handlers(ClickedEvent)
+      c.handlers(ClickedEvent).should be_empty
     end
 
     it "raises if no handlers for ExceptionEvent" do
@@ -85,7 +85,7 @@ module Crysterm
       c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))
       count.should eq 1
 
-      c.remove_all_listeners(::Crysterm::ExceptionEvent)
+      c.remove_all_handlers(::Crysterm::ExceptionEvent)
 
       expect_raises Exception do
         c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))

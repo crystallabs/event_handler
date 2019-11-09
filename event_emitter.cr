@@ -30,7 +30,7 @@ module Crysterm
 
         private def internal_insert(at : Int, type : {{e.id}}.class, handler : Proc({{e.id}}, Bool), once : Bool)
          _event_{{event_name}}.insert at, Handler(Proc({{e.id}}, Bool)).new handler, once
-         _emit NewListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+         _emit NewHandlerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
         end
 
         # Installs *handler* as a handler for event of type *type*.
@@ -61,19 +61,19 @@ module Crysterm
         # Uninstalls *handler* as a handler for event of type *type*.
         def off(type : {{e.id}}.class, handler : Proc({{e.id}}, Bool))
           if _event_{{event_name}}.delete Handler.new handler
-           _emit RemoveListenerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
+           _emit RemoveHandlerEvent, type, ->(ev : Event){ handler.call(ev.as({{e.id}})) }
           end
         end
 
         # Removes all handlers for *type*.
-        # The removal is immediate, and no `RemoveListenerEvent` events are emitted.
-        def remove_all_listeners(type : {{e.id}}.class)
-          # Blessed does it this way by just emptying the handlers, without emitting any RemoveListenerEvents
+        # The removal is immediate, and no `RemoveHandlerEvent` events are emitted.
+        def remove_all_handlers(type : {{e.id}}.class)
+          # Blessed does it this way by just emptying the handlers, without emitting any RemoveHandlerEvents
           _event_{{event_name}}.clear
         end
 
         # Returns array of currently installed handlers for *type*.
-        def listeners(type : {{e.id}}.class)
+        def handlers(type : {{e.id}}.class)
           _event_{{event_name}}
         end
 
