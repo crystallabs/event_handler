@@ -20,8 +20,8 @@ module Crysterm
       getter? once : Bool
       getter? async : Bool
       getter  at : Int32
-      def initialize(@handler : T, @once, @async, @at)
-        @handler_hash = @handler.hash
+      def initialize(@handler : T, @once, @async, @at, hash = nil)
+        @handler_hash = hash || @handler.hash
       end
       def call(obj, async)
         async = @async if async.nil?
