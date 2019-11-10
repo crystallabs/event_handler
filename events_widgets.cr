@@ -34,14 +34,14 @@ module Crysterm
   event MouseButtonUpEvent,    data : GpmData
   event MouseClickEvent,       data : GpmData
   record GpmData,
-    buttons : Int8,
-    modifiers : Int8,
+    buttons : UInt8,
+    modifiers : UInt8,
     vc : UInt16,
     dx : Int16,
     dy : Int16,
     x : Int16,
     y : Int16,
-    type : Int16,
+    type : Int32,
     clicks : Int32,
     margin : Int32,
     wdx : Int16,
