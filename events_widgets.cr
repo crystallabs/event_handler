@@ -16,24 +16,24 @@ module Crysterm
   event ResizeEvent
   event WarningEvent,  text : String
 
-  # Mouse
-  event MouseEvent,    x : Int32, y : Int32
-  event MouseOverEvent
-  event MouseOutEvent
-  event MouseDownEvent
-  event MouseUpEvent
-  event WheelDownEvent
-  event WheelUpEvent
+  ## Mouse
+  #event MouseOverEvent
+  #event MouseOutEvent
+  #event MouseDownEvent
+  #event MouseUpEvent
+  #event WheelDownEvent
+  #event WheelUpEvent
 
-  # Gpm-specific
-  event MouseMoveEvent,        data : GpmData
-  event MouseDragEvent,        data : GpmData
-  event MouseWheelEvent,       data : GpmData
-  event MouseButtonDownEvent,  data : GpmData
-  event MouseDoubleClickEvent, data : GpmData
-  event MouseButtonUpEvent,    data : GpmData
-  event MouseClickEvent,       data : GpmData
-  record GpmData,
+  ## Gpm-specific
+  #event MouseMoveEvent,        data : GpmEvent
+  #event MouseDragEvent,        data : GpmEvent
+  #event MouseWheelEvent,       data : GpmEvent
+  #event MouseButtonDownEvent,  data : GpmEvent
+  #event MouseDoubleClickEvent, data : GpmEvent
+  #event MouseButtonUpEvent,    data : GpmEvent
+  #event MouseClickEvent,       data : GpmEvent
+
+  event GpmEvent,
     buttons : UInt8,
     modifiers : UInt8,
     vc : UInt16,
@@ -46,8 +46,21 @@ module Crysterm
     margin : Int32,
     wdx : Int16,
     wdy : Int16
-  event GpmDataEvent,  data : GpmData
-  #class GpmExceptionEvent < ExceptionEvent; end
+
+  event MouseEvent,
+    action : Symbol,
+    button : Symbol?,
+    x : Int16,
+    y : Int16,
+    dx : Int16,
+    dy : Int16,
+    wdx : Int16,
+    wdy : Int16,
+    shift : Bool,
+    meta : Bool,
+    ctrl : Bool,
+    raw : GpmEvent,
+    type : Symbol
 
   event UncaughtExceptionEvent, exception : Exception
   event SigTermEvent
