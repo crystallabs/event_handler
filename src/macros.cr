@@ -1,5 +1,14 @@
-# A copy of Crystal's 0.31.1 macro, modified to create a class instead of a struct.
-# This comes handy primarily when defining events in a single line, like one would do with the usual 'record' macro.
+# Creates class *name* in a single line, like one would do with the usual `#record` macro.
+#
+# However, unlike `#record` which creates structs, `#class_record` creates classes.
+# The properties on the object are still exposed as getters and not getters+setters.
+# This may change in the future.
+#
+# This macro code is a copy of Crystal's 0.31.1 macro `#record`, adjusted for this purpose.
+#
+# ```
+# class_record MyRecord, a : Int32, b : String, c : Bool
+# ```
 macro class_record(name, *properties)
   class {{name.id}}
     {% for property in properties %}
@@ -61,46 +70,21 @@ macro class_record(name, *properties)
   end
 end
 
-# And this one is a shorthand for creating events.
+# Creates events in a single line. Each event is created as a class.
+# 
+# Since events are classes, they can be also created manually.
+# Just make sure to inherit from EventHandler::Event.
+#
+# ```
+# event MouseClick, x : Int32, y : Int32
+#
+# class MouseClick < ::EventHandler::Event
+#   getter x : Int32
+#   getter y : Int32
+#   def initialize(@x, @y)
+#   end
+# end
+# ```
 macro event(e, *args)
   class_record {{e.id}} < ::Crysterm::Event{% if args.size > 0 %}, {{ *args }}{% end %}
-
-  # TODO should ::Element events use same args or just 'event' ?
-  class_record {{e.id}}::Element < ::Crysterm::Event, event : {{e.id}}
-end
-
-# Defines new_method as an alias of old_method.
-#
-# This creates a new method new_method that invokes old_method.
-#
-# Note that due to current language limitations this is only useful
-# when neither named arguments nor blocks are involved.
-#
-# ```
-# class Person
-#   getter name
-#
-#   def initialize(@name)
-#   end
-#
-#   alias_method full_name, name
-# end
-#
-# person = Person.new "John"
-# person.name #=> "John"
-# person.full_name #=> "John"
-# ```
-#
-# This macro was present in Crystal until commit 7c3239ee505e07544ec372839efed527801d210a.
-macro alias_method(new_method, old_method)
-  def {{new_method.id}}(*args)
-    {{old_method.id}}(*args)
-  end
-end
-
-# Defines new_method as an alias of last (most recently defined) method.
-macro alias_previous(*new_methods)
-  {% for new_method in new_methods %}
-    alias_method {{new_method}}, {{@type.methods.last.name}}
-  {% end %}
 end
