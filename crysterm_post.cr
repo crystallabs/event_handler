@@ -7,7 +7,7 @@ require "./stream"
 require "./keys"
 
 require "./program"
-require "./gpmclient"
+require "./gpm_client"
 
 require "./widgets/node"
 require "./widgets/screen"

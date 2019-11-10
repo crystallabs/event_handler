@@ -18,16 +18,36 @@ module Crysterm
 
   # Mouse
   event MouseEvent,    x : Int32, y : Int32
-  event ClickEvent
   event MouseOverEvent
   event MouseOutEvent
   event MouseDownEvent
   event MouseUpEvent
-  event MouseWheelEvent
   event WheelDownEvent
   event WheelUpEvent
-  event MouseMoveEvent
-  event GpmDataEvent,  data : Bytes
+
+  # Gpm-specific
+  event MouseMoveEvent,        data : GpmData
+  event MouseDragEvent,        data : GpmData
+  event MouseWheelEvent,       data : GpmData
+  event MouseButtonDownEvent,  data : GpmData
+  event MouseDoubleClickEvent, data : GpmData
+  event MouseButtonUpEvent,    data : GpmData
+  event MouseClickEvent,       data : GpmData
+  record GpmData,
+    buttons : Int8,
+    modifiers : Int8,
+    vc : UInt16,
+    dx : Int16,
+    dy : Int16,
+    x : Int16,
+    y : Int16,
+    type : Int16,
+    clicks : Int32,
+    margin : Int32,
+    wdx : Int16,
+    wdy : Int16
+  event GpmDataEvent,  data : GpmData
+  #class GpmExceptionEvent < ExceptionEvent; end
 
   event UncaughtExceptionEvent, exception : Exception
   event SigTermEvent
