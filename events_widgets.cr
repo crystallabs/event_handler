@@ -46,6 +46,17 @@ module Crysterm
     margin : Int32,
     wdx : Int16,
     wdy : Int16
+  class GpmEvent < Event
+    def button
+      if (@buttons & 4)> 0; return :left   end
+      if (@buttons & 2)> 0; return :middle end
+      if (@buttons & 1)> 0; return :right  end
+      nil
+    end
+    def shift?() (@modifiers & 1)> 0 ? true : false end
+    def ctrl?()  (@modifiers & 4)> 0 ? true : false end
+    def meta?()  (@modifiers & 8)> 0 ? true : false end
+  end
 
   event MouseEvent,
     action : Symbol,
@@ -61,6 +72,9 @@ module Crysterm
     ctrl : Bool,
     raw : GpmEvent,
     type : Symbol
+  class MouseEvent < Event
+    delegate :button, :shift?, :ctrl?, :meta?, to: @raw
+  end
 
   event UncaughtExceptionEvent, exception : Exception
   event SigTermEvent
