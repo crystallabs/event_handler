@@ -31,28 +31,41 @@ c.on ClickedEvent, handler
 handler = ClickedEvent::Handler.new { |e| p "Handler for event 'ClickedEvent', variant 3. Coordinates are x=#{e.x} y=#{e.y}"; true }
 c.on ClickedEvent, handler
 
+# Additional options:
+
+# Now, additionally, each of the above three variants of calling on() supports specifying whether the handler
+# should default to run asynchronously or not, and whether it should run always or only once and then be
+# automatically removed. The defaults are to run with async=false and once=false.
+# So, for example, we can add the above-created handler again, this time with async at once options:
+
+c.on ClickedEvent, handler, async: true, once: true
+
+# In addition to this, there are some "special" events, namely AddHandlerEvent, RemoveHandlerEvent, and AnyEvent.
+# AddHandlerEvent runs whenever any handler is added on event; RemoveHandlerEvent runs when it is removed, including
+# when it was automatically removed due to having option 'once: true'.
+# And AnyEvent is emitted when any other event is emitted.
+
+# To listen for additions of handlers, we would do it like this (This will trigger even for our own adding ourselves):
+c.on(::Crysterm::AddHandlerEvent){|e| p "Handler #{e.handler} was just added for event #{e.event}!"; true}
+
+# To listen for removals of handlers, we would do it like this. This will now trigger as soon as we emit the
+# previously defined ClickedEvent, because the last event we added had 'once: true'.
+c.on(::Crysterm::RemoveHandlerEvent){|e| p "Handler #{e.handler} was just removed for event #{e.event}!"; true}
+
+# And we can also add a handler for AnyEvent:
+c.on(::Crysterm::AnyEvent) { |e| p "Listening for all events, and noticed event #{e.class} emitted"; true }
+
 # Now, we can actually emit the event 'ClickedEvent' with some coordinates x and y.
-# In turn this will activate all three handlers we have installed.
-# Since there are two ways how we can emit() an event, 2 x 3 will result in total 6 lines printed to screen:
+# In turn this will activate 6 events: 2 event handlers we added for ClickedEvent, 2 for NewHandlerEvent,
+# 1 for AnyEvent, and 1 for RemoveHandlerEvent when 'once: true' kicks in an automatically removes one handler.
+
+# We can emit an event in 2 ways:
 
 # Option 1, with event, and arguments just listed one after another:
 c.emit ClickedEvent, 1, 2
 
 # Option 2, with event, and arguments packed into the event:
 c.emit ClickedEvent, ClickedEvent.new 3, 4
-
-# In addition to this, there are some "special" events, namely NewHandlerEvent, RemoveHandlerEvent, and AnyEvent.
-# The first run whenever any handler is added on object; the second when any is removed.
-# The third (AnyEvent) is emitted when any one event is emitted.
-
-# Add listener on AnyEvent:
-c.on(::Crysterm::AnyEvent) { |e| p "Listening for all events, and noticed event #{e.class} emitted"; true }
-
-# So, to listen for removals of handlers, we would do it like this:
-c.on(::Crysterm::RemoveHandlerEvent){|e| p "Handler #{e.handler} was just removed for event #{e.event}!"; true}
-
-# To listen for additions of handlers, we would do it like this (This will trigger even for our own adding ourselves):
-c.on(::Crysterm::NewHandlerEvent){|e| p "Handler #{e.handler} was just added for event #{e.event}!"; true}
 
 # And when we remove a handler, this will trigger the RemoveHandlerEvent handler:
 c.off(ClickedEvent, handler)

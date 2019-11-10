@@ -64,6 +64,8 @@ end
 # And this one is a shorthand for creating events.
 macro event(e, *args)
   class_record {{e.id}} < ::Crysterm::Event{% if args.size > 0 %}, {{ *args }}{% end %}
+
+  # TODO should ::Element events use same args or just 'event' ?
   class_record {{e.id}}::Element < ::Crysterm::Event, event : {{e.id}}
 end
 

@@ -18,44 +18,44 @@ module Crysterm
     it "works for builtin events" do
       count = 0
       c = TestEvents.new
-      c.on(NewHandlerEvent){|e| count += 1; true}
+      c.on(AddHandlerEvent){|e| count += 1; true}
       count.should eq 1
 
-      c.handlers(NewHandlerEvent).size.should eq 1
+      c.handlers(AddHandlerEvent).size.should eq 1
 
-      h1 = ->(e : NewHandlerEvent) { count += 1; true}
-      c.on NewHandlerEvent, h1
+      h1 = ->(e : AddHandlerEvent) { count += 1; true}
+      c.on AddHandlerEvent, h1
       count.should eq 3
 
-      c.handlers(NewHandlerEvent).size.should eq 2
+      c.handlers(AddHandlerEvent).size.should eq 2
 
-      h2 = NewHandlerEvent::Handler.new { count += 1; true}
-      c.on NewHandlerEvent, h2
+      h2 = AddHandlerEvent::Handler.new { count += 1; true}
+      c.on AddHandlerEvent, h2
       count.should eq 6
 
-      c.handlers(NewHandlerEvent).size.should eq 3
+      c.handlers(AddHandlerEvent).size.should eq 3
 
       c.on(RemoveHandlerEvent){|e| count -= 1; true}
       count.should eq 9
 
       c.handlers(RemoveHandlerEvent).size.should eq 1
 
-      c.off(NewHandlerEvent, h1)
+      c.off(AddHandlerEvent, h1)
       count.should eq 8
 
-      c.handlers(NewHandlerEvent).size.should eq 2
+      c.handlers(AddHandlerEvent).size.should eq 2
 
-      c.off(NewHandlerEvent, h2)
+      c.off(AddHandlerEvent, h2)
       count.should eq 7
 
-      c.handlers(NewHandlerEvent).size.should eq 1
+      c.handlers(AddHandlerEvent).size.should eq 1
 
       # Already removed, so shouldn't change anything
-      c.off(NewHandlerEvent, h2)
+      c.off(AddHandlerEvent, h2)
       count.should eq 7
 
-      c.remove_all_handlers(NewHandlerEvent)
-      c.handlers(NewHandlerEvent).should be_empty
+      c.remove_all_handlers(AddHandlerEvent)
+      c.handlers(AddHandlerEvent).should be_empty
     end
 
     it "works for custom events" do
