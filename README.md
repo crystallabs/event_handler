@@ -169,7 +169,75 @@ Or by packing them into an event object instance with arguments packed inside it
 my.emit TestEvent, TestEvent.new(10, 20)
 ```
 
-In either case, the handlers always receive one argument which is the event object instance.
+### Listing event handlers
+
+If you need to look up the list of event handlers, use `handlers`:
+
+```crystal
+```
+
+Please note that `handlers` exposes the Array containing the list of handlers.
+
+Modifying this array will directly modify the list of handlers defined for an event, although this should be done with due caution.
+
+### Removing event handlers
+
+Event handlers can be removed in one of four ways:
+
+By handler Proc itself:
+
+```crystal
+handler = ClickedEvent::Handler.new do |e|
+	true
+end
+
+c.on ClickedEvent, handler
+c.off ClickedEvent, handler
+```
+
+By handler hash:
+
+```crystal
+handler = ClickedEvent::Handler.new do |e|
+	true
+end
+
+hash = handler.hash
+
+c.on ClickedEvent, handler
+c.off ClickedEvent, hash
+```
+
+By handler wrapper:
+
+```crystal
+handler = ClickedEvent::Handler.new {
+  true
+}
+
+wrapper = c.on ClickedEvent, handler
+x.off ClickedEvent, wrapper
+```
+
+By removing all handlers at once:
+
+```crystal
+x.remove_all_handlers ClickedEvent
+```
+
+Note: using `remove_all_handlers` does not trigger a `RemoveHandlerEvent` for removed handlers.
+
+### Meta events
+
+There are four built-in events which do not need to be defined manually:
+
+`AddHandlerEvent` - Event emitted whenever a handler is added for any event, including itself.
+
+`RemoveHandlerEvent` - Event emitted whenever a handler is removed from any event, including itself.
+
+`AnyEvent` - Event emitted on every other event. Adding a handler for this event allows listening for all emitted events and their arguments.
+
+`ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Usefulness of this event in the system core is still being evaluated.
 
 ## API documentation
 
