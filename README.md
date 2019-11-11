@@ -15,7 +15,7 @@ It supports:
 Each handler can run synchronously or asynchronously, run one or more times,
 and be added at the beginning or end of queue, or into a specific position.
 
-## Usage
+## Usage in a nutshell
 
 Here is a basic example that defines and emits events. More detailed usage instructions are provided further below.
 
@@ -53,6 +53,8 @@ my.emit MyClass::ClickedEvent, 10, 20
 my.remove_all_handlers TestEvent
 my.off MyClass::ClickedEvent, handler
 ```
+
+## Documentation
 
 ### Defining events
 
@@ -168,13 +170,17 @@ my.emit TestEvent, TestEvent.new(10, 20)
 
 In either case, the handlers always receive one argument which is the event object instance.
 
-## Documentation
+## API documentation
 
 Run `crystal docs` as usual, then open file `docs/index.html`.
+
+Also, see examples in the directory `examples/`.
 
 ## Testing
 
 Run `crystal spec` as usual.
+
+Also, see examples in the directory `examples/`.
 
 ## Thanks
 
