@@ -13,4 +13,6 @@ handler = ClickedEvent::Handler.new {
 
 wrapper = x.on ClickedEvent, handler
 
+p x.handlers ClickedEvent
+
 x.off ClickedEvent, wrapper

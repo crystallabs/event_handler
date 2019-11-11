@@ -23,35 +23,35 @@ Here is a basic example that defines and emits events. More detailed usage instr
 require "event_handler"
 
 # Define an event
-event TestEvent, message : String, status : Bool
+event ClickedEvent, message : String, status : Bool
 
 # Create an event-enabled class
 class MyClass
   include EventHandler
-  event ClickedEvent, x : Int32, y : Int32
+  event TestEvent, x : Int32, y : Int32
 end
 my = MyClass.new
 
 # Add a block as event handler
-my.on(TestEvent) do |e|
+my.on(ClickedEvent) do |e|
   puts "Activated on #{e.class}. Message is '#{e.message}' and status is #{e.status}"
   true
 end
 
 # And a Proc as event handler
-handler = ->(e : MyClass::ClickedEvent) do
+handler = ->(e : MyClass::TestEvent) do
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
   true
 end
-my.on MyClass::ClickedEvent, handler
+my.on MyClass::TestEvent, handler
 
 # Emit events
-my.emit TestEvent, "Hello, World!", true
-my.emit MyClass::ClickedEvent, 10, 20
+my.emit ClickedEvent, "Hello, World!", true
+my.emit MyClass::TestEvent, 10, 20
 
 # Remove handlers
-my.remove_all_handlers TestEvent
-my.off MyClass::ClickedEvent, handler
+my.remove_all_handlers ClickedEvent
+my.off MyClass::TestEvent, handler
 ```
 
 ## Documentation
@@ -97,7 +97,7 @@ As a block:
 ```crystal
 my = MyClass.new
 
-my.on(TestEvent) do |e|
+my.on(ClickedEvent) do |e|
   true
 end
 ```
@@ -107,11 +107,11 @@ As a Proc:
 ```crystal
 my = MyClass.new
 
-handler = ->(e : MyClass::ClickedEvent) do
+handler = ->(e : ClickedEvent) do
   true
 end
 
-my.on MyClass::ClickedEvent, handler
+my.on ClickedEvent, handler
 ```
 
 As a pre-created Proc, eliminating the need to repeat type information:
@@ -120,7 +120,7 @@ As a pre-created Proc, eliminating the need to repeat type information:
 my = MyClass.new
 
 handler = ClickedEvent::Handler.new do |e|
-	true
+  true
 end
 
 c.on ClickedEvent, handler
@@ -131,11 +131,11 @@ Or using an existing function:
 ```crystal
 my = MyClass.new
 
-def on_clicked(e : MyClass::ClickedEvent)
-	true
+def on_clicked(e : ClickedEvent)
+  true
 end
 
-my.on ClickedEvent, ->on_clicked(MyClass::ClickedEvent)
+my.on ClickedEvent, ->on_clicked(ClickedEvent)
 ```
 
 And as a variation of the last example, if an object method is used, `self` is preserved as expected:
@@ -152,7 +152,7 @@ class MyClass
 end
 my = MyClass.new
 
-my.on MyClass::ClickedEvent, ->my.on_clicked(MyClass::ClickedEvent)
+my.on ClickedEvent, ->my.on_clicked(ClickedEvent)
 ```
 
 ### Emitting events
@@ -160,13 +160,13 @@ my.on MyClass::ClickedEvent, ->my.on_clicked(MyClass::ClickedEvent)
 Events can be emitted by calling `emit` and listing arguments one after another:
 
 ```crystal
-my.emit TestEvent, 10, 20
+my.emit ClickedEvent, 10, 20
 ```
 
 Or by packing them into an event object instance with arguments packed inside it.
 
 ```crystal
-my.emit TestEvent, TestEvent.new(10, 20)
+my.emit ClickedEvent, ClickedEvent.new(10, 20)
 ```
 
 ### Listing event handlers
@@ -174,6 +174,7 @@ my.emit TestEvent, TestEvent.new(10, 20)
 If you need to look up the list of event handlers, use `handlers`:
 
 ```crystal
+c.handlers ClickedEvent
 ```
 
 Please note that `handlers` exposes the Array containing the list of handlers.
@@ -188,7 +189,7 @@ By handler Proc itself:
 
 ```crystal
 handler = ClickedEvent::Handler.new do |e|
-	true
+  true
 end
 
 c.on ClickedEvent, handler
@@ -199,7 +200,7 @@ By handler hash:
 
 ```crystal
 handler = ClickedEvent::Handler.new do |e|
-	true
+  true
 end
 
 hash = handler.hash
