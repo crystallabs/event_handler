@@ -195,7 +195,7 @@ Or by creating an event object instance and packing arguments in it:
 my.emit ClickedEvent, ClickedEvent.new(10, 20)
 ```
 
-In either case, the handler methods will receive one argument - the object
+In either case, the handler methods will receive one argument - the event object
 instance with packed arguments.
 
 Emitting an event returns a value. If all handlers ran synchronously, the return
