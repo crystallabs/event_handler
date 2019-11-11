@@ -21,7 +21,5 @@ module EventHandler
   #
   # The value can be overriden
   # using the argument *async* by every handler which subscribes to an event.
-  # Also, when an event is emitted, the emitter can choose to override all
-  # previous settings and execute all handlers synchronously or asynchronously.
   class_property? async = false
 end
