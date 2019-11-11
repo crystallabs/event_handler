@@ -1,9 +1,6 @@
 require "../src/event_handler"
 
-# Define all custom events, then require "finalize":
-
 event ClickedEvent, x : Int32, y : Int32
-require "../src/finalize"
 
 # Define and instantiate a class:
 

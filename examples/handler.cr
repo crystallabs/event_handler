@@ -1,6 +1,9 @@
 require "../src/event_handler"
+
+p ::EventHandler.async=true
+p ::EventHandler.async?
+
 event ClickedEvent, x : Int32, y : Int32
-require "../src/finalize"
 
 class MyClass
 	include ::EventHandler

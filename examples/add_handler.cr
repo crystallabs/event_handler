@@ -2,8 +2,6 @@ require "../src/event_handler"
 
 event ClickedEvent, x : Int32, y : Int32
 
-require "../src/finalize"
-
 class MyClass
 	include ::EventHandler
 end
