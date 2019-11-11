@@ -217,13 +217,13 @@ handler = ClickedEvent::Handler.new {
 }
 
 wrapper = my.on ClickedEvent, handler
-x.off ClickedEvent, wrapper
+my.off ClickedEvent, wrapper
 ```
 
 By removing all handlers at once:
 
 ```crystal
-x.remove_all_handlers ClickedEvent
+my.remove_all_handlers ClickedEvent
 ```
 
 Note: using `remove_all_handlers` does not trigger a `RemoveHandlerEvent` for removed handlers.
