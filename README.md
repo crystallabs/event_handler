@@ -123,7 +123,7 @@ handler = ClickedEvent::Handler.new do |e|
   true
 end
 
-c.on ClickedEvent, handler
+my.on ClickedEvent, handler
 ```
 
 Or using an existing function:
@@ -174,7 +174,7 @@ my.emit ClickedEvent, ClickedEvent.new(10, 20)
 If you need to look up the list of event handlers, use `handlers`:
 
 ```crystal
-c.handlers ClickedEvent
+my.handlers ClickedEvent
 ```
 
 Please note that `handlers` exposes the Array containing the list of handlers.
@@ -192,8 +192,8 @@ handler = ClickedEvent::Handler.new do |e|
   true
 end
 
-c.on ClickedEvent, handler
-c.off ClickedEvent, handler
+my.on ClickedEvent, handler
+my.off ClickedEvent, handler
 ```
 
 By handler hash:
@@ -205,8 +205,8 @@ end
 
 hash = handler.hash
 
-c.on ClickedEvent, handler
-c.off ClickedEvent, hash
+my.on ClickedEvent, handler
+my.off ClickedEvent, hash
 ```
 
 By handler wrapper:
@@ -216,7 +216,7 @@ handler = ClickedEvent::Handler.new {
   true
 }
 
-wrapper = c.on ClickedEvent, handler
+wrapper = my.on ClickedEvent, handler
 x.off ClickedEvent, wrapper
 ```
 
