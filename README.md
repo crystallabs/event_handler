@@ -199,14 +199,14 @@ In either case, the handler methods will receive one argument - the event object
 instance with packed arguments.
 
 Emitting an event returns a value. If all handlers ran synchronously, the return
-value will be Bool, indicating whether all handlers have completed successfully
+value will be a Bool, indicating whether all handlers have completed successfully
 (`true`) or not (`false`).
 
-If one or more handlers ran asynchronously, the return value is always `nil`.
+If one or more handlers ran asynchronously, the return value will always be `nil`.
 
 ### Handling events
 
-Handlers will always receive one argument, which is some Event subclass, packed with emitted arguments.
+As mentioned, handlers always receive one argument - an Event subclass - with packed arguments.
 
 When an event is emitted using any of available variants, such as:
 
@@ -214,7 +214,7 @@ When an event is emitted using any of available variants, such as:
 my.emit ClickedEvent, ClickedEvent.new x: 10, y: 20
 ```
 
-All handlers will receive instance of the event, with arguments being directly accessible as getters:
+The arguments are directly accessible as getters on the event object:
 
 ```
 my.on(ClickedEvent) do |e|
@@ -225,7 +225,7 @@ end
 
 ### Listing event handlers
 
-If you need to look up the list of event handlers, use `handlers`:
+If you need to look up the current list of installed event handlers, use `handlers`:
 
 ```crystal
 my.handlers ClickedEvent
@@ -233,7 +233,7 @@ my.handlers ClickedEvent
 
 Please note that `handlers` exposes the Array containing the list of handlers.
 
-Modifying this array will directly modify the list of handlers defined for an event, although this should be done with due caution.
+Modifying this array will directly modify the list of handlers defined for an event, although this should only be done with due caution.
 
 ### Removing event handlers
 
@@ -280,7 +280,7 @@ By removing all handlers at once:
 my.remove_all_handlers ClickedEvent
 ```
 
-Note: using `remove_all_handlers` does not trigger a `RemoveHandlerEvent` for removed handlers.
+Note: using `remove_all_handlers` will not trigger a `RemoveHandlerEvent` for removed handlers.
 
 ### Meta events
 
