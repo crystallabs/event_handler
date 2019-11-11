@@ -71,7 +71,7 @@ If additional modification to the class is necessary, class can be reopened:
 ```crystal
 event ClickedEvent, x : Int32, y : Int32
 class ClickedEvent < ::EventHandler::Event
-  property test : String
+  property test : String?
 end
 ```
 
