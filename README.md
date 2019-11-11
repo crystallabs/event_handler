@@ -70,6 +70,7 @@ If additional modification to the class is necessary, class can be reopened:
 
 ```crystal
 event ClickedEvent, x : Int32, y : Int32
+
 class ClickedEvent < ::EventHandler::Event
   property test : String?
 end
@@ -125,7 +126,7 @@ end
 c.on ClickedEvent, handler
 ```
 
-As using an existing function:
+Or using an existing function:
 
 ```crystal
 my = MyClass.new
@@ -137,7 +138,7 @@ end
 my.on ClickedEvent, ->on_clicked(MyClass::ClickedEvent)
 ```
 
-And if an object method is used, `self` is preserved as expected:
+And as a variation of the last example, if an object method is used, `self` is preserved as expected:
 
 ```crystal
 class MyClass
@@ -145,7 +146,7 @@ class MyClass
   event ClickedEvent, x : Int32, y : Int32
 
   def on_clicked(e : ClickedEvent)
-    p :clicked, self
+    p :clicked, e.x, e.y, self
     true
   end
 end
@@ -156,13 +157,13 @@ my.on MyClass::ClickedEvent, ->my.on_clicked(MyClass::ClickedEvent)
 
 ### Emitting events
 
-Events can be emitted by listing arguments one after another:
+Events can be emitted by calling `emit` and listing arguments one after another:
 
 ```crystal
 my.emit TestEvent, 10, 20
 ```
 
-Or by packing them into an event object instance.
+Or by packing them into an event object instance with arguments packed inside it.
 
 ```crystal
 my.emit TestEvent, TestEvent.new(10, 20)
