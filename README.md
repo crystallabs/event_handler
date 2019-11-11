@@ -23,31 +23,31 @@ Here is a basic example that defines and emits events. More detailed usage instr
 require "event_handler"
 
 # Define an event
-event ClickedEvent, message : String, status : Bool
+event ClickedEvent, x : Int32, y : Int32
 
 # Create an event-enabled class
 class MyClass
   include EventHandler
-  event TestEvent, x : Int32, y : Int32
+  event TestEvent, message : String, status : Bool
 end
 my = MyClass.new
 
 # Add a block as event handler
 my.on(ClickedEvent) do |e|
-  puts "Activated on #{e.class}. Message is '#{e.message}' and status is #{e.status}"
+  puts "Clicked on position x=#{e.x}, y=#{e.y}"
   true
 end
 
 # And a Proc as event handler
 handler = ->(e : MyClass::TestEvent) do
-  puts "Clicked on position x=#{e.x}, y=#{e.y}"
+  puts "Activated on #{e.class}. Message is '#{e.message}' and status is #{e.status}"
   true
 end
 my.on MyClass::TestEvent, handler
 
 # Emit events
-my.emit ClickedEvent, "Hello, World!", true
-my.emit MyClass::TestEvent, 10, 20
+my.emit ClickedEvent, 10, 20
+my.emit MyClass::TestEvent, "Hello, World!", true
 
 # Remove handlers
 my.remove_all_handlers ClickedEvent
@@ -82,7 +82,7 @@ Or the whole event class can be created manually; it only needs to inherit from 
 class ClickedEvent < ::EventHandler::Event
   getter x : Int32
   getter y : Int32
-  property test : String
+  property test : String?
   def initialize(@x, @y)
   end
 end
