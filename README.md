@@ -20,7 +20,7 @@ and be added at the beginning or end of queue, or into a specific position.
 Here is a basic example that defines and emits events. More detailed usage instructions are provided further below.
 
 ```crystal
-require "../src/event_handler"
+require "event_handler"
 
 # Define an event
 event TestEvent, message : String, status : Bool
@@ -39,17 +39,17 @@ my.on(TestEvent) do |e|
 end
 
 # And a Proc as event handler
-handler = ->(e : MyClass::ClickedEvent) {
+handler = ->(e : MyClass::ClickedEvent) do
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
   true
-}
+end
 my.on MyClass::ClickedEvent, handler
 
-# Emit events:
+# Emit events
 my.emit TestEvent, "Hello, World!", true
 my.emit MyClass::ClickedEvent, 10, 20
 
-# Remove handlers:
+# Remove handlers
 my.remove_all_handlers TestEvent
 my.off MyClass::ClickedEvent, handler
 ```
