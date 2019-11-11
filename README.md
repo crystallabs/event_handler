@@ -159,25 +159,26 @@ my.on ClickedEvent, ->my.on_clicked(ClickedEvent)
 
 All of the above methods for adding handlers support arguments `once`, `async`, and `at`.
 
-`once` specifies whether a handler should run only once and then auto-remove itself.
+`once` specifies whether the handler should run only once and then be automatically removed.
 Default is false. In the future this option may be replaced with `times` which specifies
-how many times to run before being automatically removed.
+how many times to run before being removed.
 
 `async` specifies whether a handler should run synchronously or asynchronously. If
-no specific value is provided, a global default from `EventEmitter.async` is used.
-Default (`EventEmitter.async?`) is false.
+no specific value is provided, global default from `EventEmitter.async` is used.
+Default (`EventEmitter.async?`) is false. You can either modify this default,
+or specify `async` on a per-call basis.
 
 `at` specifies the index in the handlers list where new handler should be inserted.
 While it is possible to specify the exact position, usually this value is `0` to
-insert at the beginning or `-1` to insert at the end respectively. Default is `-1`.
+insert at the beginning or `-1` to insert at the end. Default is `-1`.
 
 As a convenience for adding handlers that should run only once, there is a method
 named `once` available instead of the usual `on`. These two calls are equivalent:
 
 ```crystal
-my.on ClickedEvent, handler, once: true, async: true
+my.on ClickedEvent, handler, once: true, async: true, at: -1
 
-my.once ClickedEvent, handler, async:true
+my.once ClickedEvent, handler, async:true. at: -1
 ```
 
 ### Emitting events
@@ -188,11 +189,14 @@ Events can be emitted by calling `emit` and listing arguments one after another:
 my.emit ClickedEvent, 10, 20
 ```
 
-Or by packing them into an event object instance with arguments packed inside it.
+Or by creating an event object instance and packing arguments in it:
 
 ```crystal
 my.emit ClickedEvent, ClickedEvent.new(10, 20)
 ```
+
+In either case, the handler methods will receive one argument - the object
+instance with packed arguments.
 
 Emitting an event returns a value. If all handlers ran synchronously, the return
 value will be Bool, indicating whether all handlers have completed successfully
