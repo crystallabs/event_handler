@@ -1,0 +1,9 @@
+name: event_handler
+version: 0.5.0
+
+authors:
+  - Davor Ocelic <docelic@crystallabs.io>
+
+crystal: 0.31.1
+
+license: MIT

@@ -4,13 +4,13 @@ event ClickedEvent, x : Int32, y : Int32
 
 require "../src/crysterm_post"
 
-module Crysterm
+module EventHandler
 
   class TestEvents
-    include ::Crysterm::EventEmitter
+    include ::EventHandler
   end
 
-  describe Crysterm do
+  describe EventHandler do
     it "works" do
       Event.should be_truthy
     end
@@ -79,16 +79,16 @@ module Crysterm
       count = 0
       c = TestEvents.new
 
-      c.on(::Crysterm::ExceptionEvent){|e| count += 1; true}
+      c.on(::EventHandler::ExceptionEvent){|e| count += 1; true}
       count.should eq 0
 
-      c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))
+      c.emit(::EventHandler::ExceptionEvent, Exception.new("Big error message"))
       count.should eq 1
 
-      c.remove_all_handlers(::Crysterm::ExceptionEvent)
+      c.remove_all_handlers(::EventHandler::ExceptionEvent)
 
       expect_raises Exception do
-        c.emit(::Crysterm::ExceptionEvent, Exception.new("Big error message"))
+        c.emit(::EventHandler::ExceptionEvent, Exception.new("Big error message"))
       end
     end
 
@@ -97,7 +97,7 @@ module Crysterm
       c = TestEvents.new
 
       c.on(ClickedEvent){|e| true}
-      c.on(::Crysterm::AnyEvent){|e| count += 1; true}
+      c.on(::EventHandler::AnyEvent){|e| count += 1; true}
       c.emit ClickedEvent, 1,1
       count.should eq 1
     end

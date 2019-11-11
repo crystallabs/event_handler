@@ -86,5 +86,5 @@ end
 # end
 # ```
 macro event(e, *args)
-  class_record {{e.id}} < ::Crysterm::Event{% if args.size > 0 %}, {{ *args }}{% end %}
+  class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
 end
