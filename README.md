@@ -101,7 +101,7 @@ end
 
 ### Adding event handlers
 
-Event handlers can be added in five of different ways. Each handler must return a Bool.
+Event handlers can be added in a number of ways. Each handler must return a Bool.
 
 Using a block:
 
