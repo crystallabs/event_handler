@@ -53,4 +53,4 @@ c.emit(::EventHandler::ExceptionEvent, Exception.new "Example of a handled excep
 # Remove the handlers for ExceptionEvent. Confirm that unhandled
 # ExceptionEvent will be raised.
 c.remove_all_handlers(::EventHandler::ExceptionEvent)
-c.emit(::EventHandler::ExceptionEvent, Exception.new "There is no ExceptionEvent handler; this will raise (NOT A BUG, IT IS AN EXAMPLE)")
+c.emit(::EventHandler::ExceptionEvent, Exception.new "NOT A BUG, IT IS AN EXAMPLE -- there are no handlers for ExceptionEvent and it raises")

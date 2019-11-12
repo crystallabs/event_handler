@@ -6,7 +6,15 @@ class MyClass
 	include ::EventHandler
 end
 
-c = MyClass.new
+my = MyClass.new
 
-c.on(::EventHandler::AddHandlerEvent){|e| p "Event details are: ", e; true }
-c.on(ClickedEvent) { |e| true }
+my.on(::EventHandler::AddHandlerEvent){|e| p "Event details are: ", e; true }
+my.on(ClickedEvent) { |e| true }
+
+myhandler = ->(e : ClickedEvent) do
+  true
+end
+wrapper = ::EventHandler::Wrapper.new(handler: myhandler, once: false, async: false, at: -1)
+
+my.on ClickedEvent, wrapper
+
