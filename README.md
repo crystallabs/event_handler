@@ -181,7 +181,7 @@ wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false,
 my.on ClickedEvent, wrapper
 ```
 
-Using a variation of the last example with an aliased type for wrapper, with block or Proc:
+Using a variation of the last example with an aliased type for Wrapper, with block or Proc:
 
 ```crystal
 wrapper = ClickedEvent::Wrapper.new(once: false, async: false, at: -1) do |e|
