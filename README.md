@@ -325,12 +325,12 @@ If a handler is added to an event more than once, it is necessary to call
 `off()` multiple times to remove all instances.
 
 When handlers are added by passing a wrapper directly, adding a handler multiple
-times will result in multiple identical wrapper objects present in the list.
+times results in multiple identical wrapper objects present in the list.
 When `off()` is used to remove such handlers, each group of
 identical wrapper instances is removed at once and `RemoveHandlerEvent`
 is invoked once for each group with the last removed instance as argument.
 
-Whether `off(handler | hash)` should find the first instance (like
+Whether `off(handler | hash)` should find the first wrapper instance (like
 it does now) or all instances, and whether `off(wrapper)`
 should remove all identical wrappers (like it does now) or only the
 first one, is still being considered.
@@ -350,12 +350,12 @@ my.remove_all_handlers ClickedEvent
 When `remove_all_handlers` is used, `RemoveHandlerEvent`s will be emitted as
 expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
-Should `RemoveHandlerEvent` emits be disabled when using `remove_all_handlers`,
+If `RemoveHandlerEvent` events should be disabled when using `remove_all_handlers`,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
 ### Meta events
 
-There are four built-in events which are part of the system core:
+There are four built-in events:
 
 `AddHandlerEvent` - Event emitted whenever a handler is added for any event, including itself.
 
@@ -365,10 +365,10 @@ There are four built-in events which are part of the system core:
 
 `ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Appropriateness of this event in the system core is still being evaluated.
 
-When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they are invoked with the event's `Wrapper` object as argument.
-A wrapper object is implicitly created around handlers on every `on()` to encapsulate the handler and its
+As mentioned, a wrapper object is implicitly created around a handler on every `on()`, to encapsulate the handler and its
 subscription options (the values of `once?`, `async?`, and `at`).
-This allows listeners on these meta events full insight into the added or removed handlers and their settings.
+When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the handlers's `Wrapper` object as argument.
+This allows listeners on these two meta events full insight into the added or removed handlers and their settings.
 
 ## API documentation
 
