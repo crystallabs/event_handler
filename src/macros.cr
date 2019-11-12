@@ -94,57 +94,81 @@ module EventHandler
 
         private getter _event_\{{event_name}} = Array(Wrapper(Proc(\{{e.id}}, Bool))).new
 
+        private def internal_insert(type : \{{e.id}}.class, wrapper : ::EventHandler::Wrapper(Proc(Event, Bool)))
+          _event_\{{event_name}}.insert wrapper.at, wrapper
+          _emit AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Bool)))
+          wrapper
+        end
         private def internal_insert(type : \{{e.id}}.class, handler : Proc(\{{e.id}}, Bool), once : Bool, async : Bool, at : Int)
-          handler_obj = ::EventHandler::Wrapper(Proc(\{{e.id}}, Bool)).new handler, once, async, at
-          _event_\{{event_name}}.insert at, handler_obj
-          _emit AddHandlerEvent, type, handler_obj.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Bool)))
-          handler_obj
+          wrapper = ::EventHandler::Wrapper(Proc(\{{e.id}}, Bool)).new handler, once, async, at
+          internal_insert(type, wrapper)
         end
 
         # Adds *handler* to list of handlers for event *type*.
-        def on(type : \{{e.id}}.class, handler : Proc(\{{e.id}}, Bool), once = false, async = ::EventHandler.async?, at = -1)
+        def on(type : \{{e.id}}.class, handler : Proc(\{{e.id}}, Bool), once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end)
           internal_insert type, handler, once, async, at
         end
         # :ditto:
-        def on(type : \{{e.id}}.class, once = false, async = ::EventHandler.async?, at = -1, &handler : \{{e.id}} -> Bool)
+        def on(type : \{{e.id}}.class, once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, &handler : \{{e.id}} -> Bool)
           on type, handler, once, async, at
+        end
+        # :ditto:
+        def on(type : \{{e.id}}.class, wrapper : ::EventHandler::Wrapper(Proc(Event, Bool)))
+          internal_insert type, wrapper
         end
 
         # Adds *handler* to list of handlers for event *type*.
         # After it triggers once, it is automatically removed.
         #
         # The same behavior is obtained using `on` and providing argument *once*.
-        def once(type : \{{e.id}}.class, handler : Proc(\{{e.id}}, Bool), async = ::EventHandler.async?, at = -1)
+        def once(type : \{{e.id}}.class, handler : Proc(\{{e.id}}, Bool), async = ::EventHandler.async?, at = ::EventHandler.at_end)
           on type, handler, true, async, at
         end
         # :ditto:
-        def once(type : \{{e.id}}.class, async = ::EventHandler.async?, at = -1, &handler : \{{e.id}} -> Bool)
+        def once(type : \{{e.id}}.class, async = ::EventHandler.async?, at = ::EventHandler.at_end, &handler : \{{e.id}} -> Bool)
           on type, handler, true, async, at
         end
 
         # Removes *handler* from list of handlers for event *type*.
         def off(type : \{{e.id}}.class, handler : Proc(\{{e.id}}, Bool))
-          if handler_obj = _event_\{{event_name}}.find {|h| h.handler == handler }
-            off type, handler_obj
+          if wrapper = _event_\{{event_name}}.find {|h| h.handler == handler }
+            off type, wrapper
           end
         end
         # :ditto:
         def off(type : \{{e.id}}.class, hash : UInt64)
-          if handler_obj = _event_\{{event_name}}.find {|h| h.handler_hash == hash }
-            off type, handler_obj
+          if wrapper = _event_\{{event_name}}.find {|h| h.handler_hash == hash }
+            off type, wrapper
           end
         end
         # :ditto:
-        def off(type : \{{e.id}}.class, handler : ::EventHandler::Wrapper(Proc(::EventHandler::Event, Bool)))
-          if _event_\{{event_name}}.delete handler
-           _emit RemoveHandlerEvent, type, handler.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Bool)))
+        def off(type : \{{e.id}}.class, wrapper : ::EventHandler::Wrapper(Proc(::EventHandler::Event, Bool)))
+          if w = _event_\{{event_name}}.delete wrapper
+           _emit RemoveHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Bool)))
+           w
           end
         end
+        # :ditto:
+        def off(type : \{{e.id}}.class, at : Int)
+          off type, _event_\{{event_name}}[at]
+        end
 
-        # Clears list of handlers for event *type*.
-        # The removal of handlers is immediate and no `RemoveHandlerEvent` events are emitted.
-        def remove_all_handlers(type : \{{e.id}}.class)
-          _event_\{{event_name}}.clear
+        # Removes all handlers for event *type*.
+        #
+        # If *emit* is false, `RemoveHandlerEvent`s are not emitted.
+        #
+        # If *emit* is true, `RemoveHandlerEvent`s is emitted once for every distinct `Wrapper` object removed.
+        # See README for detailed description of this behavior.
+        def remove_all_handlers(type : \{{e.id}}.class, emit = ::EventHandler.emit_on_remove_all?)
+          if emit
+            wrappers = _event_\{{event_name}}.uniq
+            wrappers.each do |w|
+              off type, w
+            end
+          else
+            _event_\{{event_name}}.clear
+          end
+          true
         end
 
         # Returns list of handlers for event *type*.
