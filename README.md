@@ -10,7 +10,7 @@ It supports:
 
 1. Defining events
 1. Emitting events
-1. Adding handlers for the emitted events
+1.  handlers for emitted events
 
 Each handler can run synchronously or asynchronously, run one or more times,
 and be added at the beginning or end of queue, or into a specific position.
@@ -103,7 +103,7 @@ end
 
 Event handlers can be added in five of different ways. Each handler must return a Bool.
 
-As a block:
+Using a block:
 
 ```crystal
 my = MyClass.new
@@ -113,7 +113,7 @@ my.on(ClickedEvent) do |e|
 end
 ```
 
-As a Proc:
+Using a Proc:
 
 ```crystal
 my = MyClass.new
@@ -166,7 +166,7 @@ my = MyClass.new
 my.on ClickedEvent, ->my.on_clicked(ClickedEvent)
 ```
 
-Using a handler "wrapper", which would otherwise be created implicitly:
+Using a handler "wrapper" explicitly (otherwise it would be created and used implicitly):
 
 ```crystal
 handler = ->(e : ClickedEvent) do
@@ -202,11 +202,12 @@ how many times to run before being removed.
 `async` specifies whether a handler should run synchronously or asynchronously. If
 no specific value is provided, global default from `EventEmitter.async` is used.
 Default (`EventEmitter.async?`) is false. You can either modify this default,
-or specify `async` on a per-call basis.
+or specify `async` on a per-`on()` basis.
 
-`at` specifies the index in the handlers list where new handler should be inserted.
-While it is possible to specify the exact position, usually this value is `0` to
-insert at the beginning or `-1` to insert at the end. Default is `-1`.
+`at` specifies the index in the list of handlers where new handler should be inserted.
+While it is possible to specify the exact position, usually this value is
+`0` (`EventEmitter.at_beginning`) to insert at the beginning or `-1` (`EventEmitter.at_end`)
+to insert at the end of list. Default is `EventEmitter.at_end`.
 
 As a convenience for adding handlers that should run only once, there is a method
 named `once` available instead of the usual `on`. These two calls are equivalent:
@@ -232,13 +233,13 @@ my.emit ClickedEvent, ClickedEvent.new(10, 20)
 ```
 
 In either case, the handler methods will receive one argument - the event object
-instance with packed arguments.
+with packed arguments.
 
 Emitting an event returns a value. If all handlers run synchronously, the return
 value will be a Bool, indicating whether all handlers have completed successfully
 (`true`) or not (`false`).
 
-If one or more handlers run asynchronously, the return value will always be `nil`.
+If one or more handlers run asynchronously, the return value is immediately `nil`.
 
 ### Handling events
 
@@ -261,7 +262,7 @@ end
 
 ### Listing event handlers
 
-If you need to look up the current list of installed event handlers, use `handlers`:
+To look up the current list of installed handlers for an event, use `handlers`:
 
 ```crystal
 my.handlers ClickedEvent
@@ -275,7 +276,7 @@ Modifying this array will directly modify the list of handlers defined for an ev
 
 Event handlers can be removed in one of four ways:
 
-By handler Proc itself:
+By handler Proc:
 
 ```crystal
 handler = ClickedEvent::Handler.new do |e|
@@ -310,21 +311,21 @@ wrapper = my.on ClickedEvent, handler
 my.off ClickedEvent, wrapper
 ```
 
-Internally, handlers are removed from events by removing their wrapper
+Internally, handlers are always removed from events by removing their wrapper
 object.
 
-When wrappers are created implicitly by `on()`, each handler is given a
-different wrapper object even if added multiple times. A call to
-`off(hash | wrapper)` will find the first wrapper instance of this handler
+When wrappers are created implicitly by `on()`, each handler
+is given a different wrapper object even if added multiple times. A call to
+`off()` will find the first wrapper instance of this handler
 and remove it from the list.
 If a handler is added to an event more than once, it is necessary to call
 `off()` multiple times to remove all instances.
 
-When handlers are added by passing a wrapper, adding a handler multiple
+When handlers are added by passing a wrapper directly, adding a handler multiple
 times will result in multiple identical wrapper objects present in the list.
-When `off()` is used to remove such handlers, all wrapper instances will
-be removed at once and `RemoveHandlerEvent` will be invoked once with the
-last removed instance as argument.
+When `off()` is used to remove such handlers, each group of
+identical wrapper instances is removed at once and `RemoveHandlerEvent`
+is invoked once for each group with the last removed instance as argument.
 
 Whether `off(handler | hash)` should find the first instance (like
 it does now) or all instances, and whether `off(wrapper)`
