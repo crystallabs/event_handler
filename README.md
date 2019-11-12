@@ -330,7 +330,7 @@ is invoked once for each group with the last removed instance as argument.
 Whether `off(handler | hash)` should find the first instance (like
 it does now) or all instances, and whether `off(wrapper)`
 should remove all identical wrappers (like it does now) or only the
-first one is still being considered.
+first one, is still being considered.
 
 By index:
 
@@ -344,8 +344,9 @@ By removing all handlers at once:
 my.remove_all_handlers ClickedEvent
 ```
 
-`RemoveHandlerEvent`s will be emitted and multiple identical wrappers will be
-removed according to the above-documented behavior.
+When `remove_all_handlers` is used, `RemoveHandlerEvent`s will be emitted as
+expected, and multiple identical wrappers will be removed according to the
+above-documented behavior.
 Should `RemoveHandlerEvent` emits be disabled when using `remove_all_handlers`,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
