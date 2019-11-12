@@ -346,14 +346,14 @@ and remove it from the list.
 If a handler is added to an event more than once, it is necessary to call
 `off()` multiple times to remove all instances.
 
-When handlers are added by passing a wrapper directly, adding a handler multiple
+When handlers are added by passing wrappers directly, adding a handler multiple
 times results in multiple identical wrapper objects present in the list.
 When `off()` is used to remove such handlers, each group of
 identical wrapper instances is removed at once and `RemoveHandlerEvent`
 is invoked once for each group with the last removed instance as argument.
 
-Whether `off(handler | hash)` should find the first wrapper instance (like
-it does now) or all instances, and whether `off(wrapper)`
+Whether `off(Event, handler | hash)` should find the first wrapper instance (like
+it does now) or all instances, and whether `off(Event, wrapper)`
 should remove all identical wrappers (like it does now) or only the
 first one, is still being considered.
 
