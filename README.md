@@ -101,7 +101,7 @@ end
 
 ### Adding event handlers
 
-Event handlers can be added in four different ways. Each handler must return a Bool.
+Event handlers can be added in five of different ways. Each handler must return a Bool.
 
 As a block:
 
@@ -137,7 +137,7 @@ end
 my.on ClickedEvent, handler
 ```
 
-Or using an existing function:
+Using an existing function:
 
 ```crystal
 my = MyClass.new
@@ -149,7 +149,7 @@ end
 my.on ClickedEvent, ->on_clicked(ClickedEvent)
 ```
 
-And as a variation of the last example, if an object method is used, `self` is preserved as expected:
+Using a variation of the last example, where if an object method is used, `self` is preserved as expected:
 
 ```crystal
 class MyClass
@@ -164,6 +164,31 @@ end
 my = MyClass.new
 
 my.on ClickedEvent, ->my.on_clicked(ClickedEvent)
+```
+
+Using a handler "wrapper", which would otherwise be created implicitly:
+
+```crystal
+handler = ->(e : ClickedEvent) do
+  true
+end
+
+wrapper = ::EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
+
+my.on ClickedEvent, wrapper
+```
+
+Using a variation of the last example, where wrapper object is obtained from a call
+to `on()` and then reused:
+
+```crystal
+handler = ->(e : ClickedEvent) do
+  true
+end
+
+wrapper = my.on ClickedEvent, handler
+
+my.on ClickedEvent, wrapper
 ```
 
 #### Event handler options
@@ -274,7 +299,7 @@ my.on ClickedEvent, handler
 my.off ClickedEvent, hash
 ```
 
-By handler wrapper:
+By handler wrapper object:
 
 ```crystal
 handler = ClickedEvent::Handler.new {
@@ -285,13 +310,43 @@ wrapper = my.on ClickedEvent, handler
 my.off ClickedEvent, wrapper
 ```
 
+Internally, handlers are removed from events by removing their wrapper
+object.
+
+When wrappers are created implicitly by `on()`, each handler is given a
+different wrapper object even if added multiple times. A call to
+`off(hash | wrapper)` will find the first wrapper instance of this handler
+and remove it from the list.
+If a handler is added to an event more than once, it is necessary to call
+`off()` multiple times to remove all instances.
+
+When handlers are added by passing a wrapper, adding a handler multiple
+times will result in multiple identical wrapper objects present in the list.
+When `off()` is used to remove such handlers, all wrapper instances will
+be removed at once and `RemoveHandlerEvent` will be invoked once with the
+last removed instance as argument.
+
+Whether `off(handler | hash)` should find the first instance (like
+it does now) or all instances, and whether `off(wrapper)`
+should remove all identical wrappers (like it does now) or only the
+first one is still being considered.
+
+By index:
+
+```crystal
+my.off ClickedEvent, at: 0
+```
+
 By removing all handlers at once:
 
 ```crystal
 my.remove_all_handlers ClickedEvent
 ```
 
-Note: using `remove_all_handlers` will not trigger a `RemoveHandlerEvent` for removed handlers.
+`RemoveHandlerEvent`s will be emitted and multiple identical wrappers will be
+removed according to the above-documented behavior.
+Should `RemoveHandlerEvent` emits be disabled when using `remove_all_handlers`,
+see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
 ### Meta events
 
