@@ -8,8 +8,8 @@ EventHandler is an event library for Crystal.
 
 It supports:
 
-1. Defining events on per-class level
-1. Emitting events on objects
+1. Defining events
+1. Emitting events
 1. Adding handlers for the emitted events
 
 Each handler can run synchronously or asynchronously, run one or more times,
