@@ -1,13 +1,13 @@
-# Creates class *name* in a single line, like one would do with the usual `#record` macro.
+# Creates class *name* in a single line, like one would do with the usual `record` macro for structs.
 #
-# However, unlike `#record` which creates structs, `#class_record` creates classes.
+# Unlike `record` which creates structs, `class_record` creates classes.
 # The properties on the object are still exposed as getters and not getters+setters.
 # This may change in the future.
 #
-# This macro code is a copy of Crystal's 0.31.1 macro `#record`, adjusted for this purpose.
+# This macro code is a copy of Crystal's 0.31.1 macro `record`, adjusted for this purpose.
 #
 # ```
-# class_record MyRecord, a : Int32, b : String, c : Bool
+# class_record MyClass, a : Int32, b : String, c : Bool
 # ```
 macro class_record(name, *properties)
   class {{name.id}}
@@ -71,7 +71,7 @@ macro class_record(name, *properties)
 end
 
 module EventHandler
-  # Creates events in a single line. Each event is created as a class.
+  # Creates events in a single line; every event is a class inheriting from `EventHandler::Event`.
   #
   # Since events are classes, they can be also created manually.
   # See `EventHandler::Event` for more details.
@@ -178,10 +178,10 @@ module EventHandler
 
         # Low-level function used to execute handlers and almost nothing else.
         # Regular users should use `#emit` instead.
-        protected def _emit(type : \{{class_name}}.class, obj : \{{class_name}}, async : Bool? = nil)
+        protected def _emit(type : \{{class_name}}.class, event : \{{class_name}}, async : Bool? = nil)
           if _event_\{{event_name}}.empty?
-            if type == ::EventHandler::ExceptionEvent && obj.is_a? ::EventHandler::ExceptionEvent
-              raise obj.exception
+            if type == ::EventHandler::ExceptionEvent && event.is_a? ::EventHandler::ExceptionEvent
+              raise event.exception
             end
           end
 
@@ -190,7 +190,7 @@ module EventHandler
           # This loop invokes all registered handlers, and also removes
           # those which were intended to run only once.
           _event_\{{event_name}}.reject! do |handler|
-            ret = ret && handler.call(obj, async)
+            ret = ret && handler.call(event, async)
             if handler.once?
               off type, handler
             end
@@ -208,14 +208,14 @@ module EventHandler
         #
         # If all handlers run synchronously, returns Bool.
         # If any handler runs asynchronously, returns nil.
-        def emit(type : \{{e.id}}.class, obj : ::EventHandler::Event)
-          _emit ::EventHandler::AnyEvent, \{{e.id}}, obj
+        def emit(type : \{{e.id}}.class, event : ::EventHandler::Event)
+          _emit ::EventHandler::AnyEvent, \{{e.id}}, event
 
           if type == :screen
-           return _emit(type, obj)
+           return _emit(type, event)
           end
 
-          if _emit(type, obj) == false
+          if _emit(type, event) == false
             return false
           end
 
@@ -223,8 +223,8 @@ module EventHandler
         end
         # :ditto:
         def emit(type : \{{e.id}}.class, *args)
-          obj =  \{{e.id}}.new *args
-          emit type, obj
+          event =  \{{e.id}}.new *args
+          emit type, event
         end
 
       \{% end %}
