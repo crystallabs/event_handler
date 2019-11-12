@@ -28,6 +28,7 @@ module EventHandler
     macro inherited
       macro finished
         alias Handler = ::Proc(\{{@type}}, Bool)
+        alias Wrapper = ::EventHandler::Wrapper(Handler)
       end
     end
   end
