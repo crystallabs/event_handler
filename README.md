@@ -137,7 +137,7 @@ end
 my.on ClickedEvent, handler
 ```
 
-Using an existing function:
+Using an existing method:
 
 ```crystal
 my = MyClass.new
