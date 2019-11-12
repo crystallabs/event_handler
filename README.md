@@ -118,7 +118,7 @@ Using a Proc with any of the supported syntaxes:
 ```crystal
 my = MyClass.new
 
-# The ->(){} syntax
+# The Proc ->(){} syntax
 handler = ->(e : ClickedEvent) do
   true
 end
