@@ -125,7 +125,7 @@ end
 my.on ClickedEvent, handler
 ```
 
-As a pre-created Proc, eliminating the need to repeat type information:
+Using an alias type for Proc, eliminating the need to repeat type information:
 
 ```crystal
 my = MyClass.new
