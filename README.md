@@ -10,7 +10,7 @@ It supports:
 
 1. Defining events
 1. Emitting events
-1.  handlers for emitted events
+1. Adding and removing handlers for emitted events
 
 Each handler can run synchronously or asynchronously, run one or more times,
 and be added at the beginning or end of queue, or into a specific position.
