@@ -189,7 +189,7 @@ named `once` available instead of the usual `on`. These two calls are equivalent
 ```crystal
 my.on ClickedEvent, handler, once: true, async: true, at: -1
 
-my.once ClickedEvent, handler, async:true. at: -1
+my.once ClickedEvent, handler, async:true, at: -1
 ```
 
 ### Emitting events
