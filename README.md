@@ -260,6 +260,8 @@ my.on(ClickedEvent) do |e|
 end
 ```
 
+All handlers must return a Bool as their return value.
+
 ### Listing event handlers
 
 To look up the current list of installed handlers for an event, use `handlers`:
