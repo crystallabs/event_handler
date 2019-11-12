@@ -175,6 +175,8 @@ my.on ClickedEvent, ->my.on_clicked(ClickedEvent)
 Using a handler "wrapper" object explicitly (otherwise it would be created and used implicitly):
 
 ```crystal
+my = MyClass.new
+
 handler = ->(e : ClickedEvent) do
   true
 end
@@ -186,6 +188,8 @@ my.on ClickedEvent, wrapper
 Using a variation of the last example with an aliased type for Wrapper, with block or Proc:
 
 ```crystal
+my = MyClass.new
+
 # With block
 wrapper = ClickedEvent::Wrapper.new(once: false, async: false, at: -1) do |e|
   true
@@ -204,6 +208,8 @@ Using a variation of the last example, where wrapper object is obtained from a c
 to `on()` and then reused:
 
 ```crystal
+my = MyClass.new
+
 handler = ->(e : ClickedEvent) do
   true
 end
