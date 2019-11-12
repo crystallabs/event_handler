@@ -305,7 +305,7 @@ There are four built-in events which do not need to be defined manually:
 
 `ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Appropriateness of this event in the system core is still being evaluated.
 
-When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke their handlers with the `Wrapper` object. A wrapper object is implicitly created around a handler on every `on`, and in addition to the handler itself it contains the values of handler's subscription options (values of `once?`, `async?`, and `at`). This allows listeners on these meta events full insight into the added handlers and their settings.
+When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke their handlers with the `Wrapper` object. A wrapper object is implicitly created around a handler on every `on`, and, in addition to the handler itself, it contains the values of handler's subscription options (values of `once?`, `async?`, and `at`). This gives listeners on these meta events full insight into the added handlers and their settings.
 
 ## API documentation
 
