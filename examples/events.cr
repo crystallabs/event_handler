@@ -22,6 +22,17 @@ c.on ClickedEvent, handler
 # Option 1, with arguments one after another:
 c.emit ClickedEvent, 1, 2
 
+hnd = ->(e : ClickedEvent) do
+  true
+end
+wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
+
+c.on ClickedEvent, hnd
+
+wrapper = ClickedEvent::Wrapper.new(handler: handler, once: false, async: false, at: -1)
+
+c.on ClickedEvent, hnd
+
 # Listen on 3 built-in/meta events:
 c.on(::EventHandler::AddHandlerEvent){|e| p "Handler added for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"; true}
 c.on(::EventHandler::RemoveHandlerEvent){|e| p "Handler removed for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"; true}
