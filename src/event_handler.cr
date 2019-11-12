@@ -21,7 +21,7 @@ module EventHandler
   #
   # The value can be overriden
   # using the argument *async* by every handler which subscribes to an event.
-  class_property? async = false
+  class_property? async : Bool = false
 
   # `RemoveHandlerEvent` control flag for method `remove_all`; default true.
   #
@@ -37,17 +37,17 @@ module EventHandler
   # EventHandler.emit_on_remove_all? # => true
   # EventHandler.emit_on_remove_all = false
   # ```
-  class_property? emit_on_remove_all = true
+  class_property? emit_on_remove_all : Bool = true
 
   # Default insertion index when a handler is to be inserted at the beginning of list; default 0.
   #
   # Changing this value might cause "Index out of bounds" Exceptions if used
   # without additional considerations, and changing it should rarely be needed.
-  class_property at_beginning = 0
+  class_property at_beginning : Int32 = 0
 
   # Default insertion index when a handler is to be inserted at the end of list; default -1.
   #
   # Changing this value might cause "Index out of bounds" Exceptions if used
   # without additional considerations, and changing it should rarely be needed.
-  class_property at_end = -1
+  class_property at_end : Int32 = -1
 end
