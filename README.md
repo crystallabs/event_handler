@@ -15,6 +15,17 @@ It supports:
 Each handler can run synchronously or asynchronously, run one or more times,
 and be added at the beginning or end of queue, or into a specific position.
 
+## Installation
+
+Add the dependency to `shard.yml`:
+
+```yaml
+dependencies:
+  crysterm:
+    github: crystallabs/crysterm
+    version: 0.5.0
+```
+
 ## Usage in a nutshell
 
 Here is a basic example that defines and emits events. More detailed usage instructions are provided further below.
