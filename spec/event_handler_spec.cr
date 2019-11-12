@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 module EventHandler
 

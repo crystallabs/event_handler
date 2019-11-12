@@ -70,19 +70,19 @@ macro class_record(name, *properties)
   end
 end
 
-# Creates events in a single line. Each event is created as a class.
-# 
-# Since events are classes, they can be also created manually.
-# See `EventHandler::Event` for more details.
-#
-# ```
-# event MouseClick, x : Int32, y : Int32
-# ```
-macro event(e, *args)
-  class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
-end
-
 module EventHandler
+  # Creates events in a single line. Each event is created as a class.
+  #
+  # Since events are classes, they can be also created manually.
+  # See `EventHandler::Event` for more details.
+  #
+  # ```
+  # event MouseClick, x : Int32, y : Int32
+  # ```
+  macro event(e, *args)
+    class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
+  end
+
   # :nodoc:
   # EventHandler macro magic
   macro finished

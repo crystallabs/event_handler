@@ -23,7 +23,7 @@ Here is a basic example that defines and emits events. More detailed usage instr
 require "event_handler"
 
 # Define an event
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 # Create an event-enabled class
 class MyClass
@@ -63,13 +63,13 @@ An event can be defined via the convenient `event` macro or manually.
 Using `event` creates an event class which inherits from base class `EventHandler::Event`:
 
 ```crystal
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 ```
 
 If additional modification to the class is necessary, class can be reopened:
 
 ```crystal
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 class ClickedEvent < ::EventHandler::Event
   property test : String?
@@ -293,6 +293,8 @@ There are four built-in events which do not need to be defined manually:
 `AnyEvent` - Event emitted on every other event. Adding a handler for this event allows listening for all emitted events and their arguments.
 
 `ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Usefulness of this event in the system core is still being evaluated.
+
+When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke their handlers with the `Wrapper` object. A wrapper object for each handler is implicitly created on every `on`, and in addition to providing access to the handlers themselves, wrappers also contain the values of arguments used during handler subscription (values of `once?`, `async?`, and `at`). This allows listeners on these meta events full insight into the added handlers and their settings.
 
 ## API documentation
 

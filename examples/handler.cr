@@ -3,7 +3,7 @@ require "../src/event_handler"
 p ::EventHandler.async=true
 p ::EventHandler.async?
 
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 class MyClass
 	include ::EventHandler

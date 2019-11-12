@@ -1,7 +1,7 @@
 require "../src/event_handler"
 
 # Define an event
-event TestEvent, message : String, status : Bool
+EventHandler.event TestEvent, message : String, status : Bool
 
 # Create an event-enabled class
 class MyClass

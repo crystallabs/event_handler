@@ -1,6 +1,6 @@
 require "../src/event_handler"
 
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 class MyClass
 	include ::EventHandler

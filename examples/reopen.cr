@@ -1,7 +1,7 @@
 require "../src/event_handler"
 
 
-event ClickedEvent, x : Int32, y : Int32
+EventHandler.event ClickedEvent, x : Int32, y : Int32
 class ClickedEvent < ::EventHandler::Event
   property test : String? = "it works"
 end
