@@ -422,6 +422,6 @@ Also, see examples in the directory `examples/`.
 
 ## Related projects
 
-List of interesting or related projects in no particular order:
+List of interesting or similar projects in no particular order:
 
 - https://github.com/hugoabonizio/event_emitter.cr - Idiomatic asynchronous event-driven architecture
