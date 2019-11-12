@@ -200,7 +200,7 @@ Events can be emitted by calling `emit` and listing arguments one after another:
 my.emit ClickedEvent, 10, 20
 ```
 
-Or by creating an event object instance and packing arguments in it:
+Or by creating an event instance and packing arguments in it:
 
 ```crystal
 my.emit ClickedEvent, ClickedEvent.new(10, 20)
@@ -209,15 +209,15 @@ my.emit ClickedEvent, ClickedEvent.new(10, 20)
 In either case, the handler methods will receive one argument - the event object
 instance with packed arguments.
 
-Emitting an event returns a value. If all handlers ran synchronously, the return
+Emitting an event returns a value. If all handlers run synchronously, the return
 value will be a Bool, indicating whether all handlers have completed successfully
 (`true`) or not (`false`).
 
-If one or more handlers ran asynchronously, the return value will always be `nil`.
+If one or more handlers run asynchronously, the return value will always be `nil`.
 
 ### Handling events
 
-As mentioned, handlers always receive one argument - an Event subclass - with packed arguments.
+As mentioned, handlers always receive one argument - an Event subclass with packed arguments.
 
 When an event is emitted using any of available variants, such as:
 
@@ -244,7 +244,7 @@ my.handlers ClickedEvent
 
 Please note that `handlers` exposes the Array containing the list of handlers.
 
-Modifying this array will directly modify the list of handlers defined for an event, although this should only be done with due caution.
+Modifying this array will directly modify the list of handlers defined for an event. This should only be done with due caution.
 
 ### Removing event handlers
 
@@ -301,11 +301,11 @@ There are four built-in events which do not need to be defined manually:
 
 `RemoveHandlerEvent` - Event emitted whenever a handler is removed from any event, including itself.
 
-`AnyEvent` - Event emitted on every other event. Adding a handler for this event allows listening for all emitted events and their arguments.
+`AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments.
 
-`ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Usefulness of this event in the system core is still being evaluated.
+`ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Appropriateness of this event in the system core is still being evaluated.
 
-When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke their handlers with the `Wrapper` object. A wrapper object for each handler is implicitly created on every `on`, and in addition to providing access to the handlers themselves, wrappers also contain the values of arguments used during handler subscription (values of `once?`, `async?`, and `at`). This allows listeners on these meta events full insight into the added handlers and their settings.
+When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke their handlers with the `Wrapper` object. A wrapper object is implicitly created around a handler on every `on`, and in addition to the handler itself it contains the values of handler's subscription options (values of `once?`, `async?`, and `at`). This allows listeners on these meta events full insight into the added handlers and their settings.
 
 ## API documentation
 
