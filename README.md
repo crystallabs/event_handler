@@ -260,7 +260,8 @@ my.on(ClickedEvent) do |e|
 end
 ```
 
-All handlers must return a Bool as their return value.
+All handlers must return a Bool as their return value, indicating success (`true`)
+or failure (`false`).
 
 ### Listing event handlers
 
