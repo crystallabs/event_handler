@@ -16,3 +16,17 @@ wrapper = x.on ClickedEvent, handler
 p x.handlers ClickedEvent
 
 x.off ClickedEvent, wrapper
+
+wrapper = ::EventHandler::Wrapper.new(handler)
+
+p handler.class
+
+wrapper = ::EventHandler::Wrapper(Proc(EventHandler::Event,Bool)).new() { |x|
+  true
+}
+
+wrapper2 = ClickedEvent::Wrapper.new() { |x|
+  true
+}
+
+#x.on ClickedEvent, wrapper

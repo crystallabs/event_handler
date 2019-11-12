@@ -18,13 +18,13 @@ module EventHandler
     getter? async : Bool
     getter  at : Int32
 
-    def initialize(@handler : T, @once, @async, @at, hash = nil)
+    def initialize(@handler : T, @once = false, @async = ::EventHandler.async?, @at = ::EventHandler.at_end, hash = nil)
       @handler_hash = hash || @handler.hash
     end
 
-    #def initialize(once, async, at, hash = nil, &handler : T)
-    #  initialize handler, once, async, at, hash
-    #end
+    def initialize(once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, hash = nil, &handler : T)
+      initialize handler, once, async, at, hash
+    end
 
     def call(obj, async)
       async = @async if async.nil?

@@ -23,7 +23,7 @@ Add the dependency to `shard.yml`:
 dependencies:
   event_handler:
     github: crystallabs/event_handler
-    version: 0.6.0
+    version: 0.7.0
 ```
 
 ## Usage in a nutshell
@@ -82,7 +82,7 @@ If additional modification to the class is necessary, class can be reopened:
 ```crystal
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
-class ClickedEvent < ::EventHandler::Event
+class ClickedEvent < EventHandler::Event
   property test : String?
 end
 ```
@@ -90,7 +90,7 @@ end
 Or the whole event class can be created manually; it only needs to inherit from `EventHandler::Event`:
 
 ```crystal
-class ClickedEvent < ::EventHandler::Event
+class ClickedEvent < EventHandler::Event
   getter x : Int32
   getter y : Int32
   property test : String?
@@ -125,7 +125,7 @@ end
 my.on ClickedEvent, handler
 ```
 
-Using an aliased type for Proc, eliminating the need to repeat type information:
+Using an aliased type for Proc called `Handler`, eliminating the need to repeat type information:
 
 ```crystal
 my = MyClass.new
@@ -173,7 +173,17 @@ handler = ->(e : ClickedEvent) do
   true
 end
 
-wrapper = ::EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
+wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
+
+my.on ClickedEvent, wrapper
+```
+
+Using a variation of the last example with an aliased type for wrapper:
+
+```crystal
+wrapper = ClickedEvent::Wrapper.new(once: false, async: false, at: -1) {
+  true
+}
 
 my.on ClickedEvent, wrapper
 ```
