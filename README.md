@@ -274,7 +274,7 @@ Modifying this array will directly modify the list of handlers defined for an ev
 
 ### Removing event handlers
 
-Event handlers can be removed in one of four ways:
+Event handlers can be removed in one of five ways:
 
 By handler Proc:
 
