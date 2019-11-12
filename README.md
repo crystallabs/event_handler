@@ -113,17 +113,17 @@ my.on(ClickedEvent) do |e|
 end
 ```
 
-Using a Proc with any of the supported syntaxes:
+Using a Proc:
 
 ```crystal
 my = MyClass.new
 
-# The Proc ->(){} syntax
+# With Proc ->(){} syntax
 handler = ->(e : ClickedEvent) do
   true
 end
 
-# The Proc.new syntax
+# With Proc.new syntax
 handler = Proc(ClickedEvent, Bool).new do |e|
   true
 end
