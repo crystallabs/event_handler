@@ -271,9 +271,9 @@ If one or more handlers run asynchronously, the return value is immediately `nil
 
 ### Handling events
 
-As mentioned, handlers always receive one argument - an Event subclass with packed arguments.
+As mentioned, handlers always receive one argument - the event object with packed arguments.
 
-When an event is emitted using any of available variants, such as:
+When an event is emitted using any of the available variants, such as:
 
 ```crystal
 my.emit ClickedEvent, ClickedEvent.new x: 10, y: 20
@@ -346,7 +346,8 @@ Internally, handlers are always removed from events by removing their wrapper
 object.
 
 When wrappers are created implicitly by `on()`, each handler
-is given a different wrapper object even if added multiple times. A call to
+is given a different wrapper object even if added multiple times for the
+same event. A call to
 `off()` will find the first wrapper instance of this handler
 and remove it from the list.
 If a handler is added to an event more than once, it is necessary to call
@@ -378,7 +379,7 @@ my.remove_all_handlers ClickedEvent
 When `remove_all_handlers` is used, `RemoveHandlerEvent`s will be emitted as
 expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
-If `RemoveHandlerEvent` events should be disabled when using `remove_all_handlers`,
+If emitting `RemoveHandlerEvent` events should be disabled for `remove_all_handlers`,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
 ### Meta events
@@ -395,7 +396,8 @@ There are four built-in events:
 
 As mentioned, a wrapper object is implicitly created around a handler on every `on()`, to encapsulate the handler and its
 subscription options (the values of `once?`, `async?`, and `at`).
-When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the handlers's `Wrapper` object as argument.
+When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the
+handlers' `Wrapper` object as argument.
 This allows listeners on these two meta events full insight into the added or removed handlers and their settings.
 
 ## API documentation
