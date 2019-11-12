@@ -21,8 +21,8 @@ Add the dependency to `shard.yml`:
 
 ```yaml
 dependencies:
-  crysterm:
-    github: crystallabs/crysterm
+  event_handler:
+    github: crystallabs/event_handler
     version: 0.5.0
 ```
 
