@@ -315,7 +315,6 @@ handler = ClickedEvent::Handler.new do |e|
 end
 
 my.on ClickedEvent, handler
-
 my.off ClickedEvent, handler
 ```
 
@@ -329,7 +328,6 @@ end
 hash = handler.hash
 
 my.on ClickedEvent, handler
-
 my.off ClickedEvent, hash
 ```
 
@@ -341,7 +339,6 @@ handler = ClickedEvent::Handler.new {
 }
 
 wrapper = my.on ClickedEvent, handler
-
 my.off ClickedEvent, wrapper
 ```
 
