@@ -118,10 +118,12 @@ Using a Proc with any of the supported syntaxes:
 ```crystal
 my = MyClass.new
 
+# The ->(){} syntax
 handler = ->(e : ClickedEvent) do
   true
 end
 
+# The Proc.new syntax
 handler = Proc(ClickedEvent, Bool).new do |e|
   true
 end
@@ -184,10 +186,12 @@ my.on ClickedEvent, wrapper
 Using a variation of the last example with an aliased type for Wrapper, with block or Proc:
 
 ```crystal
+# With block
 wrapper = ClickedEvent::Wrapper.new(once: false, async: false, at: -1) do |e|
   true
 end
 
+# With Proc
 handler = ->(e : ClickedEvent) do
   true
 end
