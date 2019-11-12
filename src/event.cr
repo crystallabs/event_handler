@@ -1,5 +1,5 @@
 module EventHandler
-  # Basic event class. All events must inherit from `Event`.
+  # Basic event class; all events must inherit from `Event`.
   #
   # This abstract class is generally not used directly; see macro `event`.
   #

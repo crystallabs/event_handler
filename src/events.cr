@@ -6,7 +6,7 @@ module EventHandler
   # If an exception is emitted using this event and there are no handlers
   # subscribed to it, the exception will instead be raised.
   # 
-  # Usefulness of this event in the system core is still being evaluated.
+  # Appropriateness of this event in the system core is still being evaluated.
   class_record ExceptionEvent < Event, exception : ::Exception
 
   # Meta event, emitted on every other event.
