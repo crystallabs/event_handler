@@ -185,7 +185,7 @@ wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false,
 my.on ClickedEvent, wrapper
 ```
 
-Using a variation of the last example with an aliased type for Wrapper, with block or Proc:
+Using a variation of the last example with an aliased type for Wrapper:
 
 ```crystal
 my = MyClass.new
@@ -205,7 +205,7 @@ my.on ClickedEvent, wrapper
 ```
 
 Using a variation of the last example, where wrapper object is obtained from a call
-to `on()` and then reused:
+to `on()` and then reused to add the handler the second time:
 
 ```crystal
 my = MyClass.new
@@ -345,26 +345,25 @@ my.off ClickedEvent, wrapper
 Internally, handlers are always removed from events by removing their wrapper
 object.
 
-When wrappers are created implicitly by `on()`, each handler
-is given a different wrapper object even if added multiple times for the
-same event. A call to
+When wrappers are created implicitly by `on()`, each invocation of `on()`
+gives handler a new wrapper object even if it is added multiple times for
+the same event. A call to
 `off()` will find the first wrapper instance of this handler
 and remove it from the list.
 If a handler is added to an event more than once, it is necessary to call
 `off()` multiple times to remove all instances.
 
-When handlers are added by passing wrappers directly, adding a handler multiple
+When handlers are added by using their wrappers directly, adding a handler multiple
 times results in multiple identical wrapper objects present in the list.
 When `off()` is used to remove such handlers, each group of
 identical wrapper instances is removed at once and `RemoveHandlerEvent`
 is invoked once for each group with the last removed instance as argument.
 
-Whether `off(Event, handler | hash)` should find the first wrapper instance (like
-it does now) or all instances, and whether `off(Event, wrapper)`
-should remove all identical wrappers (like it does now) or only the
-first one, is still being considered.
+Whether `off(Event, handler | hash)` should be removing handlers by
+wrapper (like it does now) or by handler, and whether `off()` should remove
+all instances (like it does now) or at most one, is still being considered.
 
-By index:
+By handler index in the `handlers` Array:
 
 ```crystal
 my.off ClickedEvent, at: 0
