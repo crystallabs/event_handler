@@ -438,8 +438,8 @@ channel = Channel(ClickedEvent).new
 channel = ClickedEvent::Channel.new
 ```
 
-Invoking `on` with a Channel argument will implicitly create a handler which
-forwards emitted events to that Channel:
+Invoking `on` with a Channel argument will implicitly create a handler that
+forwards emitted events to the Channel:
 
 ```crystal
 my.on ClickedEvent, channel, async: true
