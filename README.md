@@ -77,13 +77,13 @@ Using `event` creates an event class which inherits from base class `EventHandle
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 ```
 
-Macro `event` is only a shorthand for the following line:
+It is a shorthand for the following line:
 
 ```crystal
 class_record ClickedEvent < ::EventHandler::Event, x : Int32, y : Int32
 ```
 
-(`class_record` is EventHandler's copy of Crystal's `record` macro, but it creates classes instead of structs.)
+(`class_record` is EventHandler's variant of Crystal's `record` macro; it creates classes instead of structs.)
 
 If additional modification to the class is necessary, class can be reopened:
 
