@@ -508,22 +508,21 @@ The accepted syntax and arguments for `wait` are the same as
 for `once`.
 
 When waiting for events with a block or Proc, two handlers
-are involved.  The first, visible one is the handler which is
-provided to `wait`, containing code to execute once the event arrives.
+are involved:
+
+The first, visible one is the handler which is provided to
+`wait`, containing code to execute once the event arrives.
+`wait` argument *async* controls whether the handler will
+run synchronously or asynchronously after the event has been
+waited.
 
 The other, implicit one is the handler automatically created
 and added to the list of event handlers. Once the event is
 emitted and this handler runs, it will forward the received
 event into the Channel.
-
-The `wait` argument *async*  refers to the provided handler.
-It controls whether the handler will run synchronously or
-asynchronously after the event has been waited.
-
-The additional argument *async_send* refers to the implicitly
-created handler which forwards events to the Channel.
-It controls whether the event emitter will block on
-`channel.send`, or it will execute the send in a new fiber.
+`wait` argument *async_send* controls whether the event emitter
+will block on `channel.send` or it will execute the send in
+a new fiber.
 
 ### Subclassing
 
