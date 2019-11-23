@@ -4,7 +4,7 @@
 
 # EventHandler
 
-EventHandler is an event library for Crystal.
+EventHandler is a full-featured event library for Crystal.
 
 It supports:
 
@@ -15,6 +15,9 @@ It supports:
 Each handler can run synchronously or asynchronously, run one or more times,
 and be added at the beginning or end of queue, or into a specific position.
 
+It also possible to subclass events, send events through Channels,
+and wait for events.
+
 ## Installation
 
 Add the dependency to `shard.yml`:
@@ -23,7 +26,7 @@ Add the dependency to `shard.yml`:
 dependencies:
   event_handler:
     github: crystallabs/event_handler
-    version: 0.9.0
+    version: 0.10.0
 ```
 
 ## Usage in a nutshell
@@ -247,7 +250,7 @@ how many times to run before being removed.
 `async` specifies whether a handler should run synchronously or asynchronously. If
 no specific value is provided, global default from `EventEmitter.async` is used.
 Default (`EventEmitter.async?`) is false. You can either modify this default,
-or specify `async` on a per-`on()` basis.
+or specify `async` on a per-`on` basis.
 
 `at` specifies the index in the list of handlers where new handler should be inserted.
 While it is possible to specify the exact position, usually this value is
@@ -366,7 +369,7 @@ my.off ClickedEvent, wrapper
 Internally, handlers are always removed from events by removing their wrapper
 object.
 
-When wrappers are created implicitly by `on()`, each invocation of `on()`
+When wrappers are created implicitly by `on`, each invocation of `on`
 gives handler a new wrapper object even if it is added multiple times for
 the same event. A call to
 `off()` will find the first wrapper instance of this handler
@@ -402,7 +405,7 @@ above-documented behavior.
 If emitting `RemoveHandlerEvent` events should be disabled for `remove_all_handlers`,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
-### Meta events
+### Meta Events
 
 There are four built-in events:
 
@@ -414,11 +417,114 @@ There are four built-in events:
 
 `ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Appropriateness of this event in the system core is still being evaluated.
 
-As mentioned, a wrapper object is implicitly created around a handler on every `on()`, to encapsulate the handler and its
+As mentioned, a wrapper object is implicitly created around a handler on every `on`, to encapsulate the handler and its
 subscription options (the values of `once?`, `async?`, and `at`).
 When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the
 handlers' `Wrapper` object as argument.
 This allows listeners on these two meta events full insight into the added or removed handlers and their settings.
+
+### Channels
+
+Emitted events can be sent through channels.
+
+Channels can be created with Channel(T) or an aliased type:
+
+```crystal
+# With Channel(T)
+channel = Channel(ClickedEvent).new
+
+# With an aliased type
+channel = ClickedEvent::Channel.new
+```
+
+Sending of emitted events through channels can be requested with `on` as usual.
+Invoking `on` with a channel argument will implicitly create a handler which
+forwards emitted events to the channel:
+
+```crystal
+wrapper = my.on ClickedEvent, channel, async: true
+```
+
+The same behavior can also be implemented manually:
+
+```crystal
+channel = Channel(ClickedEvent).new
+
+my.on(ClickedEvent, async: true) { |e| channel.send e }
+```
+
+A complete example:
+
+```crystal
+require "event_handler"
+
+EventHandler.event ClickedEvent, x : Int32, y : Int32
+
+class My
+  include EventHandler
+end
+my = My.new
+
+# Create channel and emit an event manually
+channel = Channel(ClickedEvent).new
+spawn do p channel.receive end
+sleep 0.5
+my.once(ClickedEvent) { |e| channel.send e; true }
+my.emit(ClickedEvent, 1,2)
+
+# Create channel and call `on` with channel as argument
+channel = ClickedEvent::Channel.new
+my.once ClickedEvent, channel, async: true
+my.emit(ClickedEvent, 1,2)
+p channel.receive
+```
+
+### Waiting for events
+
+Using channels, it is also possible to wait for events.
+
+The above example already shows blocking on `channel.receive`.
+The same effect can be achieved using `wait` and abstracting
+the use of channels:
+
+```crystal
+# Wait for event
+e = my.wait(ClickedEvent)
+
+# Wait for event and execute handler
+e = my.wait(ClickedEvent) { |e|
+  true
+}
+
+# Wait for event and execute handler asynchronously
+handler = ClickedEvent::Handler.new { true }
+e = my.wait ClickedEvent, handler, async=true
+```
+
+The accepted arguments for `wait` are the same as for `once`.
+
+When waiting for events, two handlers are involved. The
+visible one is the usual handler passed to `wait`, containing
+code to execute once the event arrives.
+
+The other one is the implicitly created handler which is
+added to the list of event handlers and which forwards the
+received event into the channel.
+
+The `wait` argument *async*  refers to the provided handler.
+It controls whether the handler will run synchronously or
+asynchronously after the event has been waited.
+
+The additional argument *async_send* refers to the implicitly
+created handler which forwards events through the channel.
+It controls whether the event emitter will block on `channel.send`.
+
+Whether *async* should control the actual handler (like it
+does now), or the implicitly created handler which forwards
+received events into the channel, is still being considered.
+
+`wait` can also be used without a handler. It would simply
+wait for the event and return it.
 
 ### Subclassing
 
@@ -460,7 +566,9 @@ my.emit TripleClickedEvent, 5, 6
 my.emit TripleClickedEvent, 7, 8, 9
 ```
 
-In addition to subclassing, the behavior of the events can be modified in many ways.
+### Custom behavior
+
+The behavior of events can be modified in many ways.
 
 Here is an example which, based on a single event definition, creates three events
 and emits all three when the main event is emitted:
@@ -469,37 +577,37 @@ and emits all three when the main event is emitted:
 require "event_handler"
 
 macro extended_event(e, *args)
-  # Regular event definition as with the standard `event()` macro:
+  # Regular event definition as with the standard `event()` macro
   class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
 
-  # Subclassed event definition. It accepts same arguments as parent event:
+  # Subclassed event definition. It accepts same arguments as parent event
   class {{e.id}}::Subclass < {{e.id}}; end
 
   # Related event definition. Its signature is different; it accepts the
-  # complete main event as argument:
+  # complete main event as argument
   class_record {{e.id}}::Related < ::EventHandler::Event, event : {{e.id}}
 
-  # A way for the main event to retrieve its subclassed event class:
+  # A way for the main event to retrieve its subclassed event class
   def {{e.id}}.subclass; {{e.id}}::Subclass end
 
-  # A way for the main event to retrieve its related event class:
+  # A way for the main event to retrieve its related event class
   def {{e.id}}.related; {{e.id}}::Related end
 end
 
-# Define an event:
+# Define an event
 extended_event ClickedEvent, x : Int32, y : Int32
 
 class My
   include EventHandler
 
   def initialize
-    # Install event handlers:
+    # Install event handlers
     on(ClickedEvent)           {|e| p e; true }
     on(ClickedEvent::Subclass) {|e| p e; true }
     on(ClickedEvent::Related)  {|e| p e; true }
   end
 
-  # Override emit() to insert custom logic:
+  # Override emit() to insert custom logic
   def emit(type, obj : EventHandler::Event)
     _emit EventHandler::AnyEvent, type, obj
 

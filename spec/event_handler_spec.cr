@@ -87,6 +87,50 @@ module EventHandler
       count.should eq 4
     end
 
+    it "works with channels" do
+      c = TestEvents.new
+      ch = ClickedEvent::Channel.new
+      c.on ClickedEvent, ch
+      spawn do c.emit ClickedEvent, 1, 2 end
+      ch.receive.class.should eq ClickedEvent
+      c.remove_all_handlers ClickedEvent
+
+      spawn do
+        c.wait(ClickedEvent).class.should eq ClickedEvent
+      end
+      spawn do
+        c.wait(ClickedEvent).class.should eq ClickedEvent
+      end
+      spawn do
+        c.wait(ClickedEvent) { |e| e.class.should eq ClickedEvent; true}
+      end
+      spawn do
+        c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; true})
+      end
+
+      sleep 0.5
+      c.emit ClickedEvent, 1, 2
+      sleep 0.5
+
+      c.remove_all_handlers ClickedEvent
+      count = 0
+
+      spawn do
+        loop do
+          c.emit(ClickedEvent, 1,2)
+          Fiber.yield
+        end
+      end
+
+      sleep 0.5
+
+      10.times do |i|
+        c.wait(ClickedEvent) { |e| count += i; true }
+      end
+
+      count.should eq 45
+    end
+
     it "raises if no handlers for ExceptionEvent" do
       count = 0
       c = TestEvents.new

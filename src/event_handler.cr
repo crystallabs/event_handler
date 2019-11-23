@@ -1,5 +1,5 @@
 module EventHandler
-  VERSION = "0.9.0"
+  VERSION = "0.10.0"
 end
 
 require "./macros"
@@ -9,6 +9,9 @@ require "./events"
 
 module EventHandler
   # Asynchronous execution flag; default false.
+  #
+  # This setting affects whether event handlers will be executed synchronously
+  # one by one, or asynchronously in Fibers.
   #
   # To enable it, set *async* to true:
   #
@@ -22,6 +25,24 @@ module EventHandler
   # The value can be overriden
   # using the argument *async* by every handler which subscribes to an event.
   class_property? async : Bool = false
+
+  # Asynchronous execution flag for `#wait`ed events; default false.
+  #
+  # This setting affects whether implicitly created event handlers which
+  # forward events through channels will execute synchronously or asynchronously.
+  #
+  # To enable it, set *async_send* to true:
+  #
+  # ```
+  # EventHandler.async_send? # => false
+  # EventHandler.async_send = true
+  # ```
+  #
+  # Note that this setting only affects default value.
+  #
+  # The value can be overriden
+  # using the argument *async_send* on every `#wait`.
+  class_property? async_send : Bool = false
 
   # `RemoveHandlerEvent` control flag for method `remove_all`; default true.
   #

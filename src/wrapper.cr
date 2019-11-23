@@ -26,7 +26,7 @@ module EventHandler
       initialize handler, once, async, at, hash
     end
 
-    def call(obj, async)
+    def call(obj, async=nil)
       async = @async if async.nil?
       if async
         spawn do @handler.call obj end

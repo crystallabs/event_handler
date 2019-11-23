@@ -29,6 +29,7 @@ module EventHandler
       macro finished
         alias Handler = ::Proc(\{{@type}}, Bool)
         alias Wrapper = ::EventHandler::Wrapper(Handler)
+        alias Channel = ::Channel(self)
       end
     end
   end
