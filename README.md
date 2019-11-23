@@ -592,7 +592,8 @@ macro extended_event(e, *args)
   def {{e.id}}.related; {{e.id}}::Related end
 end
 
-# Define an event
+# Define the main event. Based on the above, it automatically creates
+# ClickedEvent, ClickedEvent::Subclass, and ClickedEvent::Related.
 extended_event ClickedEvent, x : Int32, y : Int32
 
 class My
@@ -621,6 +622,10 @@ end
 my = My.new
 
 my.emit ClickedEvent, 1, 2
+
+#<ClickedEvent:0x7fca444d5eb0 @x=1, @y=2>
+#<ClickedEvent:0x7fca444d5eb0 @x=1, @y=2>
+#<ClickedEvent::Related:0x7fca444d4b80 @event=#<ClickedEvent:0x7fca444d5eb0 @x=1, @y=2>>
 ```
 
 ## API documentation
