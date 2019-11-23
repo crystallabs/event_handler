@@ -107,6 +107,15 @@ class ClickedEvent < EventHandler::Event
 end
 ```
 
+Subclassing also works as expected:
+
+```crystal
+EventHandler.event ClickedEvent, x : Int32, y : Int32
+
+class DoubleClickedEvent < ClickedEvent
+end
+```
+
 ### Adding event handlers
 
 Event handlers can be added in a number of ways. Each handler must return a Bool.
@@ -413,7 +422,7 @@ This allows listeners on these two meta events full insight into the added or re
 
 ## Subclassing
 
-Subclassing the event classes works as expected:
+Event classes can be subclassed as usual:
 
 ```crystal`
 require "event_handler"
