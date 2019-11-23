@@ -422,7 +422,7 @@ This allows listeners on these two meta events full insight into the added or re
 
 ### Subclassing
 
-Event classes can be subclassed as usual with no restrictions:
+Event classes can be subclassed with no restrictions:
 
 ```crystal
 require "event_handler"
