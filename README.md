@@ -310,7 +310,7 @@ or failure (`false`).
 
 ### Inspecting event handlers
 
-To look up the current list of installed handlers for an event, use `handlers`:
+To inspect the current list of installed handlers for an event, use `handlers`:
 
 ```crystal
 my.handlers ClickedEvent
@@ -322,11 +322,11 @@ my.handlers(ClickedEvent).size
 
 Please note that `handlers` exposes the Array containing the list of handlers.
 
-Modifying this array will directly modify the list of handlers defined for an event. This should only be done with due caution.
+Modifying the array will directly modify the list of handlers defined for an event. This should only be done with due caution.
 
 ### Removing event handlers
 
-Event handlers can be removed in one of five ways:
+Event handlers can be removed in one of six ways:
 
 By handler Proc:
 
@@ -401,6 +401,14 @@ expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
 If emitting `RemoveHandlerEvent` events should be disabled for `remove_all_handlers`,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
+
+By manipulating the `handlers` Array directly:
+
+```crystal
+my.handlers(ClickedEvent).clear
+```
+
+This option should only be used in custom scenarios and with due caution.
 
 ### Meta events
 
