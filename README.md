@@ -419,7 +419,7 @@ Also, see examples in the directory `examples/`.
 
 * Asterite, Absolutejam, and Tenebrousedge for additional discussion
 
-## Related projects
+## Other projects
 
 List of interesting or similar projects in no particular order:
 
