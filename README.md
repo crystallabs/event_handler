@@ -420,11 +420,11 @@ When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked wit
 handlers' `Wrapper` object as argument.
 This allows listeners on these two meta events full insight into the added or removed handlers and their settings.
 
-## Subclassing
+### Subclassing
 
 Event classes can be subclassed as usual:
 
-```crystal`
+```crystal
 require "event_handler"
 
 EventHandler.event ClickedEvent, x : Int32, y : Int32
