@@ -23,7 +23,7 @@ Add the dependency to `shard.yml`:
 dependencies:
   event_handler:
     github: crystallabs/event_handler
-    version: 0.8.0
+    version: 0.9.0
 ```
 
 ## Usage in a nutshell
@@ -76,6 +76,14 @@ Using `event` creates an event class which inherits from base class `EventHandle
 ```crystal
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 ```
+
+Macro `event` is only a shorthand for the following line:
+
+```crystal
+class_record ClickedEvent < ::EventHandler::Event, x : Int32, y : Int32
+```
+
+(`class_record` is EventHandler's copy of Crystal's `record` macro, but it creates classes instead of structs.)
 
 If additional modification to the class is necessary, class can be reopened:
 
@@ -291,12 +299,16 @@ end
 All handlers must return a Bool as their return value, indicating success (`true`)
 or failure (`false`).
 
-### Listing event handlers
+### Inspecting event handlers
 
 To look up the current list of installed handlers for an event, use `handlers`:
 
 ```crystal
 my.handlers ClickedEvent
+
+my.handlers(ClickedEvent).empty?
+
+my.handlers(ClickedEvent).size
 ```
 
 Please note that `handlers` exposes the Array containing the list of handlers.
@@ -398,6 +410,100 @@ subscription options (the values of `once?`, `async?`, and `at`).
 When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the
 handlers' `Wrapper` object as argument.
 This allows listeners on these two meta events full insight into the added or removed handlers and their settings.
+
+## Subclassing
+
+Subclassing the event classes works as expected:
+
+```crystal`
+require "event_handler"
+
+EventHandler.event ClickedEvent, x : Int32, y : Int32
+
+class DoubleClickedEvent < ClickedEvent
+end
+
+class TripleClickedEvent < DoubleClickedEvent
+  def initialize(@x : Int32, @y : Int32)
+    @z = 0
+  end
+
+  def initialize(@x : Int32, @y : Int32, @z : Int32)
+  end
+end
+
+class My
+  include EventHandler
+
+  def initialize
+    on(ClickedEvent)       {|e| p e; true }
+    on(DoubleClickedEvent) {|e| p e; true }
+    on(TripleClickedEvent) {|e| p e; true }
+  end
+end
+my = My.new
+
+my.emit ClickedEvent, 1, 2
+
+my.emit DoubleClickedEvent, 3, 4
+
+my.emit TripleClickedEvent, 5, 6
+my.emit TripleClickedEvent, 7, 8, 9
+```
+
+In addition to subclassing, the behavior of the events can be modified in many ways.
+
+Here is an example which, based on a single event definition, creates tree events
+and emits all three when the main event is emitted:
+
+```crystal
+require "event_handler"
+
+macro extended_event(e, *args)
+  # Regular event definition as with the standard `event()` macro:
+  class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
+
+  # Subclassed event definition. It accepts same arguments as parent event:
+  class {{e.id}}::Subclass < {{e.id}}; end
+
+  # Related event definition. Its signature is different; it accepts the
+  # complete main event as argument:
+  class_record {{e.id}}::Related < ::EventHandler::Event, event : ::EventHandler::Event
+
+  # A way for the main event to retrieve its subclassed event class:
+  def {{e.id}}.subclass; {{e.id}}::Subclass end
+
+  # A way for the main event to retrieve its related event class:
+  def {{e.id}}.related; {{e.id}}::Related end
+end
+
+extended_event ClickedEvent, x : Int32, y : Int32
+
+class My
+  include EventHandler
+
+  def initialize
+    on(ClickedEvent)           {|e| p e; true }
+    on(ClickedEvent::Subclass) {|e| p e; true }
+    on(ClickedEvent::Related)  {|e| p e; true }
+  end
+
+  def emit(type, obj : EventHandler::Event)
+    _emit EventHandler::AnyEvent, type, obj
+
+    ret = true
+
+    ret &&= _emit type, obj
+    ret &&= _emit type.subclass, obj
+    ret &&= _emit type.related, obj
+
+    ret
+  end
+end
+my = My.new
+
+my.emit ClickedEvent, 1, 2
+```
 
 ## API documentation
 

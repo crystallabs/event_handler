@@ -2,6 +2,8 @@ require "./spec_helper"
 
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
+class DoubleClickedEvent < ClickedEvent; end
+
 module EventHandler
 
   class TestEvents
@@ -71,6 +73,18 @@ module EventHandler
 
       c.remove_all_handlers(ClickedEvent)
       c.handlers(ClickedEvent).should be_empty
+    end
+
+    it "works with subclasses" do
+      count = 0
+      c = TestEvents.new
+      c.on(ClickedEvent){|e| count += e.x + e.y; true}
+      c.on(DoubleClickedEvent){|e| count += e.x + e.y; true}
+
+      c.emit ClickedEvent, 1,1
+      c.emit DoubleClickedEvent, 1,1
+
+      count.should eq 4
     end
 
     it "raises if no handlers for ExceptionEvent" do
