@@ -379,9 +379,9 @@ If a handler is added to an event more than once, it is necessary to call
 
 When handlers are added by using their wrappers directly, adding a handler multiple
 times results in multiple identical wrapper objects present in the list.
-When `off()` is used to remove such handlers, each group of
-identical wrapper instances is removed at once and `RemoveHandlerEvent`
-is invoked once for each group with the last removed instance as argument.
+When `off()` is used to remove such handlers, all identical wrapper instances
+are removed at once and `RemoveHandlerEvent` is invoked with the last
+removed instance as argument.
 
 Whether `off(Event, handler | hash)` should be removing handlers by
 wrapper (like it does now) or by handler, and whether `off()` should remove
