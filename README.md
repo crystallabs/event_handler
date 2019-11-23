@@ -426,7 +426,7 @@ This allows listeners on these two meta events full insight into the added or re
 ### Channels
 
 Emitted events can also be sent through Channels. EventHandler comes with
-convenience classes and functions for this purpose:
+convenience types and functions for this purpose:
 
 Channels can be created with Channel(T) or an aliased type:
 
@@ -438,9 +438,8 @@ channel = Channel(ClickedEvent).new
 channel = ClickedEvent::Channel.new
 ```
 
-Sending of emitted events through Channels can be requested with `on` as usual.
 Invoking `on` with a Channel argument will implicitly create a handler which
-forwards emitted events to the Channel:
+forwards emitted events to that Channel:
 
 ```crystal
 my.on ClickedEvent, channel, async: true
@@ -510,9 +509,9 @@ for `once`.
 When waiting for events with a block or Proc, two handlers
 are involved:
 
-The first, visible one is the handler which is provided to
+The first, visible one is the handler provided to
 `wait`, containing code to execute once the event arrives.
-`wait` argument *async* controls whether the handler will
+`wait` argument *async* controls whether this handler will
 run synchronously or asynchronously after the event has been
 waited.
 
@@ -521,7 +520,7 @@ and added to the list of event handlers. Once the event is
 emitted and this handler runs, it will forward the received
 event into the Channel.
 `wait` argument *async_send* controls whether the event emitter
-will block on `channel.send` or it will execute the send in
+will block on `channel.send` or it will execute it in
 a new fiber.
 
 ### Subclassing
