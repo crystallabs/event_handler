@@ -422,7 +422,7 @@ This allows listeners on these two meta events full insight into the added or re
 
 ### Subclassing
 
-Event classes can be subclassed as usual:
+Event classes can be subclassed as usual with no restrictions:
 
 ```crystal
 require "event_handler"
@@ -462,7 +462,7 @@ my.emit TripleClickedEvent, 7, 8, 9
 
 In addition to subclassing, the behavior of the events can be modified in many ways.
 
-Here is an example which, based on a single event definition, creates tree events
+Here is an example which, based on a single event definition, creates three events
 and emits all three when the main event is emitted:
 
 ```crystal
@@ -477,7 +477,7 @@ macro extended_event(e, *args)
 
   # Related event definition. Its signature is different; it accepts the
   # complete main event as argument:
-  class_record {{e.id}}::Related < ::EventHandler::Event, event : ::EventHandler::Event
+  class_record {{e.id}}::Related < ::EventHandler::Event, event : {{e.id}}
 
   # A way for the main event to retrieve its subclassed event class:
   def {{e.id}}.subclass; {{e.id}}::Subclass end
@@ -486,17 +486,20 @@ macro extended_event(e, *args)
   def {{e.id}}.related; {{e.id}}::Related end
 end
 
+# Define an event:
 extended_event ClickedEvent, x : Int32, y : Int32
 
 class My
   include EventHandler
 
   def initialize
+    # Install event handlers:
     on(ClickedEvent)           {|e| p e; true }
     on(ClickedEvent::Subclass) {|e| p e; true }
     on(ClickedEvent::Related)  {|e| p e; true }
   end
 
+  # Override emit() to insert custom logic:
   def emit(type, obj : EventHandler::Event)
     _emit EventHandler::AnyEvent, type, obj
 

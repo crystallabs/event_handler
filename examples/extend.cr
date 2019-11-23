@@ -5,7 +5,7 @@ macro extended_event(e, *args)
 
   class {{e.id}}::Subclass < {{e.id}}; end
 
-  class_record {{e.id}}::Related < ::EventHandler::Event, event : ::EventHandler::Event
+  class_record {{e.id}}::Related < ::EventHandler::Event, event : {{e.id}} # or ::EventHandler::Event
 
   def {{e.id}}.subclass; {{e.id}}::Subclass end
 
