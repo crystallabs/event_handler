@@ -326,7 +326,7 @@ Modifying the array will directly modify the list of handlers defined for an eve
 
 ### Removing event handlers
 
-Event handlers can be removed in one of six ways:
+Event handlers can be removed in one of five ways:
 
 By handler Proc:
 
@@ -401,14 +401,6 @@ expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
 If emitting `RemoveHandlerEvent` events should be disabled for `remove_all_handlers`,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
-
-By manipulating the `handlers` Array directly:
-
-```crystal
-my.handlers(ClickedEvent).clear
-```
-
-This option should only be used in custom scenarios and with due caution.
 
 ### Meta events
 
