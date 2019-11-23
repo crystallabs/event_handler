@@ -163,9 +163,9 @@ module EventHandler
           wait type, handler, async, at, async_send
         end
         # Blocks until event *type* is emitted and returns emitted event.
-        def wait(type : \{{e.id}}.class, async = ::EventHandler.async_send?, at = ::EventHandler.at_end)
+        def wait(type : \{{e.id}}.class, async_send = ::EventHandler.async_send?, at = ::EventHandler.at_end)
           channel = \{{e.id}}::Channel.new
-          once type, channel, async, at
+          once type, channel, async_send, at
           channel.receive
         end
 

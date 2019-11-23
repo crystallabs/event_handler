@@ -15,8 +15,8 @@ It supports:
 Each handler can run synchronously or asynchronously, run one or more times,
 and be added at the beginning or end of queue, or into a specific position.
 
-It also possible to subclass events, send events through Channels,
-and wait for events.
+It also supports subclassing events, sending events through Channels,
+and waiting for events.
 
 ## Installation
 
@@ -64,8 +64,8 @@ my.emit ClickedEvent, 10, 20
 my.emit MyClass::TestEvent, "Hello, World!", true
 
 # Remove handlers
-my.remove_all_handlers ClickedEvent
 my.off MyClass::TestEvent, handler
+my.remove_all_handlers ClickedEvent
 ```
 
 ## Documentation
@@ -86,7 +86,7 @@ It is a shorthand for the following line:
 class_record ClickedEvent < ::EventHandler::Event, x : Int32, y : Int32
 ```
 
-(`class_record` is EventHandler's variant of Crystal's `record` macro; it creates classes instead of structs.)
+`class_record` is EventHandler's variant of Crystal's `record` macro; it creates classes instead of structs.
 
 If additional modification to the class is necessary, class can be reopened:
 
@@ -318,9 +318,9 @@ To inspect the current list of installed handlers for an event, use `handlers`:
 ```crystal
 my.handlers ClickedEvent
 
-my.handlers(ClickedEvent).empty?
-
 my.handlers(ClickedEvent).size
+
+my.handlers(ClickedEvent).empty?
 ```
 
 Please note that `handlers` exposes the Array containing the list of handlers.
@@ -425,7 +425,8 @@ This allows listeners on these two meta events full insight into the added or re
 
 ### Channels
 
-Emitted events can be sent through channels.
+Emitted events can also be sent through Channels. EventHandler comes with
+convenience classes and functions for this purpose:
 
 Channels can be created with Channel(T) or an aliased type:
 
@@ -437,12 +438,12 @@ channel = Channel(ClickedEvent).new
 channel = ClickedEvent::Channel.new
 ```
 
-Sending of emitted events through channels can be requested with `on` as usual.
-Invoking `on` with a channel argument will implicitly create a handler which
-forwards emitted events to the channel:
+Sending of emitted events through Channels can be requested with `on` as usual.
+Invoking `on` with a Channel argument will implicitly create a handler which
+forwards emitted events to the Channel:
 
 ```crystal
-wrapper = my.on ClickedEvent, channel, async: true
+my.on ClickedEvent, channel, async: true
 ```
 
 The same behavior can also be implemented manually:
@@ -450,7 +451,9 @@ The same behavior can also be implemented manually:
 ```crystal
 channel = Channel(ClickedEvent).new
 
-my.on(ClickedEvent, async: true) { |e| channel.send e }
+my.on(ClickedEvent, async: true) do |e|
+  channel.send e
+end
 ```
 
 A complete example:
@@ -465,66 +468,62 @@ class My
 end
 my = My.new
 
-# Create channel and emit an event manually
-channel = Channel(ClickedEvent).new
-spawn do p channel.receive end
-sleep 0.5
-my.once(ClickedEvent) { |e| channel.send e; true }
-my.emit(ClickedEvent, 1,2)
-
-# Create channel and call `on` with channel as argument
+# Create a channel, wait for event, and print it
 channel = ClickedEvent::Channel.new
 my.once ClickedEvent, channel, async: true
+my.emit(ClickedEvent, 1,2)
+p channel.receive
+
+# Same as above, implemented manually
+channel = Channel(ClickedEvent).new
+my.once(ClickedEvent, async: true) do |e|
+  channel.send e
+  true
+end
 my.emit(ClickedEvent, 1,2)
 p channel.receive
 ```
 
 ### Waiting for events
 
-Using channels, it is also possible to wait for events.
+Using Channels, it is also possible to wait for events.
 
 The above example already shows blocking on `channel.receive`.
-The same effect can be achieved using `wait` and abstracting
-the use of channels:
+The same effect can be achieved using `wait` and
+avoiding visible use of Channels:
 
 ```crystal
-# Wait for event
 e = my.wait(ClickedEvent)
-
-# Wait for event and execute handler
-e = my.wait(ClickedEvent) { |e|
-  true
-}
-
-# Wait for event and execute handler asynchronously
-handler = ClickedEvent::Handler.new { true }
-e = my.wait ClickedEvent, handler, async=true
 ```
 
-The accepted arguments for `wait` are the same as for `once`.
+`wait` can also be invoked with a block or Proc:
 
-When waiting for events, two handlers are involved. The
-visible one is the usual handler passed to `wait`, containing
-code to execute once the event arrives.
+```crystal
+my.wait(ClickedEvent) do |e|
+  true
+end
+```
 
-The other one is the implicitly created handler which is
-added to the list of event handlers and which forwards the
-received event into the channel.
+The accepted syntax and arguments for `wait` are the same as
+for `once`.
+
+When waiting for events with a block or Proc, two handlers
+are involved.  The first, visible one is the handler which is
+provided to `wait`, containing code to execute once the event arrives.
+
+The other, implicit one is the handler automatically created
+and added to the list of event handlers. Once the event is
+emitted and this handler runs, it will forward the received
+event into the Channel.
 
 The `wait` argument *async*  refers to the provided handler.
 It controls whether the handler will run synchronously or
 asynchronously after the event has been waited.
 
 The additional argument *async_send* refers to the implicitly
-created handler which forwards events through the channel.
-It controls whether the event emitter will block on `channel.send`.
-
-Whether *async* should control the actual handler (like it
-does now), or the implicitly created handler which forwards
-received events into the channel, is still being considered.
-
-`wait` can also be used without a handler. It would simply
-wait for the event and return it.
+created handler which forwards events to the Channel.
+It controls whether the event emitter will block on
+`channel.send`, or it will execute the send in a new fiber.
 
 ### Subclassing
 
