@@ -320,19 +320,22 @@ end
 All handlers are defined with Nil as their return type.
 This makes the return value from handlers ignored regardless of what it is.
 
-The only two cases where an explicit `nil` is required to satisfy the
-type restriction are at the end of Procs defined with *->(){}* notation
-and at the end of methods without explicit return type:
+There are only two cases where an explicit `nil` is required to satisfy the
+type restriction.
+
+At the end of Procs defined with *->(){}* notation:
 
 ```crystal
-# At the end of Procs defined with ->(){} syntax
 handler = ->(e : ClickedEvent) do
   p "Hello"
   nil
 end
 my.on ClickedEvent, handler
+```
 
-# At the end of methods without explicit return type
+And at the end of methods without explicit return type:
+
+```crystal
 def on_clicked(e : ClickedEvent)
   p "Hello"
   nil
