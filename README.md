@@ -120,7 +120,7 @@ end
 
 ### Adding event handlers
 
-Event handlers can be added in a number of ways. The return value from the event handlers is always Nil.
+Event handlers can be added in a number of ways.
 
 Using a block:
 
