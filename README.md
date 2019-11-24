@@ -242,6 +242,23 @@ wrapper = my.on ClickedEvent, handler
 my.on ClickedEvent, wrapper
 ```
 
+Using a Channel:
+
+```crystal
+my = MyClass.new
+
+# With Channel(T)
+channel = Channel(ClickedEvent).new
+
+# With an aliased type
+channel = ClickedEvent::Channel.new
+
+my.on ClickedEvent, channel
+```
+
+When `on` is invoked with a channel, it implicitly creates and
+adds an event handler which forwards received events into the channel.
+
 #### Event handler options
 
 All of the above methods for adding handlers support arguments `once`, `async`, and `at`.
