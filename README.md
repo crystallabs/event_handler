@@ -766,3 +766,7 @@ List of interesting or similar projects in no particular order:
 - https://github.com/Papierkorb/cute - Event-centric pub/sub model for objects inspired by the Qt framework
 
 - https://github.com/hugoabonizio/event_emitter.cr - Idiomatic asynchronous event-driven architecture
+
+- https://github.com/vladfaust/callbacks.cr - Expressive callbacks module for Crystal
+
+- https://github.com/anykeyh/await_async - Provide await and async methods to Crystal
