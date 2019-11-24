@@ -24,7 +24,7 @@ module EventHandler
       wrapper = ::EventHandler::Wrapper.new(handler)
       c.on ClickedEvent, wrapper
 
-      wrapper = ::EventHandler::Wrapper(Proc(ClickedEvent,Bool)).new() { |x|
+      wrapper = ::EventHandler::Wrapper(Proc(ClickedEvent,Nil)).new() { |x|
         count += 1
         true
       }

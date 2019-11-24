@@ -11,7 +11,7 @@ my = My.new
 ch = Channel(ClickedEvent).new
 spawn do p ch.receive end
 sleep 0.5
-my.once(ClickedEvent) { |e| ch.send e; true }
+my.once(ClickedEvent) { |e| ch.send e}
 my.emit(ClickedEvent, 1,2)
 
 # Create channel and call `on` with channel as argument

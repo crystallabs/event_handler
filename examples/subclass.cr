@@ -18,9 +18,9 @@ class My
   include EventHandler
 
   def initialize
-    on(ClickedEvent)       {|e| p e; true }
-    on(DoubleClickedEvent) {|e| p e; true }
-    on(TripleClickedEvent) {|e| p e; true }
+    on(ClickedEvent)       {|e| p e }
+    on(DoubleClickedEvent) {|e| p e }
+    on(TripleClickedEvent) {|e| p e }
   end
 end
 

@@ -7,13 +7,12 @@ class MyClass
 end
 my = MyClass.new
 
-p = ClickedEvent::Handler.new { |e| p "Clicked. Coordinates are x=#{e.x} y=#{e.y}"; true }
+p = ClickedEvent::Handler.new { |e| p "Clicked. Coordinates are x=#{e.x} y=#{e.y}"}
 
 wrapper = ::EventHandler::Wrapper.new(once: false, async: false, at: -1, handler: p)
 
 #wrapper2 = ::EventHandler::Wrapper.new(once: false, async: false, at: -1) { |e|
 #  p "Clicked. Coordinates are x=#{e.x} y=#{e.y}"
-#  true
 #}
 
 my.on ClickedEvent, wrapper

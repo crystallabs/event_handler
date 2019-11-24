@@ -27,7 +27,7 @@ module EventHandler
   abstract class Event
     macro inherited
       macro finished
-        alias Handler = ::Proc(\{{@type}}, Bool)
+        alias Handler = ::Proc(\{{@type}}, Nil)
         alias Wrapper = ::EventHandler::Wrapper(Handler)
         alias Channel = ::Channel(self)
       end

@@ -10,8 +10,8 @@ my = My.new
 
 ch = ClickedEvent::Channel.new
 
-my.on(ClickedEvent) { |e| ch.send e; true }
-my.once(ClickedEvent) { |e| ch.send e; true }
+my.on(ClickedEvent) { |e| ch.send e}
+my.once(ClickedEvent) { |e| ch.send e}
 
 spawn do 3.times do p ch.receive end end
 

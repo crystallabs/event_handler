@@ -11,19 +11,19 @@ c = MyClass.new
 
 # Add handlers for ClickedEvent in 3 different ways:
 
-c.on(ClickedEvent) { |e| p "Clicked (handler 1). Coordinates are x=#{e.x} y=#{e.y}"; true }
+c.on(ClickedEvent) { |e| p "Clicked (handler 1). Coordinates are x=#{e.x} y=#{e.y}"}
 
-handler = ->(e : ClickedEvent) { p "Clicked (handler 2). Coordinates are x=#{e.x} y=#{e.y}"; true }
+handler = ->(e : ClickedEvent) { p "Clicked (handler 2). Coordinates are x=#{e.x} y=#{e.y}"; nil }
 c.on ClickedEvent, handler
 
-handler = ClickedEvent::Handler.new { |e| p "Clicked (handler 3). Coordinates are x=#{e.x} y=#{e.y}"; true }
+handler = ClickedEvent::Handler.new { |e| p "Clicked (handler 3). Coordinates are x=#{e.x} y=#{e.y}" }
 c.on ClickedEvent, handler
 
 # Option 1, with arguments one after another:
 c.emit ClickedEvent, 1, 2
 
 hnd = ->(e : ClickedEvent) do
-  true
+  nil
 end
 wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
 
@@ -34,9 +34,9 @@ wrapper = ClickedEvent::Wrapper.new(handler: handler, once: false, async: false,
 c.on ClickedEvent, hnd
 
 # Listen on 3 built-in/meta events:
-c.on(::EventHandler::AddHandlerEvent){|e| p "Handler added for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"; true}
-c.on(::EventHandler::RemoveHandlerEvent){|e| p "Handler removed for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"; true}
-c.on(::EventHandler::AnyEvent) { |e| p "AnyEvent: #{e.class} was emitted"; true }
+c.on(::EventHandler::AddHandlerEvent){|e| p "Handler added for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"}
+c.on(::EventHandler::RemoveHandlerEvent){|e| p "Handler removed for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"}
+c.on(::EventHandler::AnyEvent) { |e| p "AnyEvent: #{e.class} was emitted" }
 
 # And also the 4th time with options for *async*, *once*, and *at*.
 # *async* specifies whether event handler will be invoked in a `Fiber`.
@@ -58,7 +58,7 @@ c.emit ClickedEvent, ClickedEvent.new 3, 4
 
 # Add handler for ExceptionEvent. Emitting an exception with handler
 # present will invoke the handler rather than raise the exception.
-c.on(::EventHandler::ExceptionEvent) { |e| p "Running exception handler; ExceptionEvent won't raise"; true }
+c.on(::EventHandler::ExceptionEvent) { |e| p "Running exception handler; ExceptionEvent won't raise" }
 c.emit(::EventHandler::ExceptionEvent, Exception.new "Example of a handled exception; it won't raise")
 
 # Remove the handlers for ExceptionEvent. Confirm that unhandled

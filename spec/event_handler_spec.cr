@@ -18,24 +18,24 @@ module EventHandler
     it "works for builtin events" do
       count = 0
       c = TestEvents.new
-      c.on(AddHandlerEvent){|e| count += 1; true}
+      c.on(AddHandlerEvent){|e| count += 1}
       count.should eq 1
 
       c.handlers(AddHandlerEvent).size.should eq 1
 
-      h1 = ->(e : AddHandlerEvent) { count += 1; true}
+      h1 = ->(e : AddHandlerEvent) { count += 1; nil}
       c.on AddHandlerEvent, h1
       count.should eq 3
 
       c.handlers(AddHandlerEvent).size.should eq 2
 
-      h2 = AddHandlerEvent::Handler.new { count += 1; true}
+      h2 = AddHandlerEvent::Handler.new { count += 1}
       c.on AddHandlerEvent, h2
       count.should eq 6
 
       c.handlers(AddHandlerEvent).size.should eq 3
 
-      c.on(RemoveHandlerEvent){|e| count -= 1; true}
+      c.on(RemoveHandlerEvent){|e| count -= 1}
       count.should eq 9
 
       c.handlers(RemoveHandlerEvent).size.should eq 1
@@ -105,7 +105,7 @@ module EventHandler
         c.wait(ClickedEvent) { |e| e.class.should eq ClickedEvent; true}
       end
       spawn do
-        c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; true})
+        c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; nil})
       end
 
       sleep 0.5

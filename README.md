@@ -49,13 +49,12 @@ my = MyClass.new
 # Add a block as event handler
 my.on(ClickedEvent) do |e|
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
-  true
 end
 
 # And a Proc as event handler
 handler = ->(e : MyClass::TestEvent) do
   puts "Activated on #{e.class}. Message is '#{e.message}' and status is #{e.status}"
-  true
+  nil
 end
 my.on MyClass::TestEvent, handler
 
@@ -121,7 +120,7 @@ end
 
 ### Adding event handlers
 
-Event handlers can be added in a number of ways. Each handler must return a Bool.
+Event handlers can be added in a number of ways. The return value from the event handlers is always Nil.
 
 Using a block:
 
@@ -129,7 +128,7 @@ Using a block:
 my = MyClass.new
 
 my.on(ClickedEvent) do |e|
-  true
+  p "Hello"
 end
 ```
 
@@ -140,12 +139,13 @@ my = MyClass.new
 
 # With Proc ->(){} syntax
 handler = ->(e : ClickedEvent) do
-  true
+  p "Hello"
+  nil
 end
 
 # With Proc.new syntax
-handler = Proc(ClickedEvent, Bool).new do |e|
-  true
+handler = Proc(ClickedEvent, Nil).new do |e|
+  p "Hello"
 end
 
 my.on ClickedEvent, handler
@@ -157,7 +157,7 @@ Using an aliased type for Proc called `Handler`, eliminating the need to repeat 
 my = MyClass.new
 
 handler = ClickedEvent::Handler.new do |e|
-  true
+  p "Hello"
 end
 
 my.on ClickedEvent, handler
@@ -168,8 +168,7 @@ Using an existing method:
 ```crystal
 my = MyClass.new
 
-def on_clicked(e : ClickedEvent)
-  true
+def on_clicked(e : ClickedEvent) : Nil
 end
 
 my.on ClickedEvent, ->on_clicked(ClickedEvent)
@@ -184,7 +183,7 @@ class MyClass
 
   def on_clicked(e : ClickedEvent)
     p :clicked, e.x, e.y, self
-    true
+    nil
   end
 end
 my = MyClass.new
@@ -198,7 +197,8 @@ Using a handler "wrapper" object explicitly (otherwise it would be created and u
 my = MyClass.new
 
 handler = ->(e : ClickedEvent) do
-  true
+  p "Hello"
+  nil
 end
 wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
 
@@ -212,12 +212,13 @@ my = MyClass.new
 
 # With block
 wrapper = ClickedEvent::Wrapper.new(once: false, async: false, at: -1) do |e|
-  true
+  p "Hello"
 end
 
 # With Proc
 handler = ->(e : ClickedEvent) do
-  true
+  p "Hello"
+  nil
 end
 wrapper = ClickedEvent::Wrapper.new(handler: handler, once: false, async: false, at: -1)
 
@@ -231,7 +232,8 @@ to `on()` and then reused to add the handler the second time:
 my = MyClass.new
 
 handler = ->(e : ClickedEvent) do
-  true
+  p "Hello"
+  nil
 end
 
 wrapper = my.on ClickedEvent, handler
@@ -263,31 +265,36 @@ named `once` available instead of the usual `on`. These two calls are equivalent
 ```crystal
 my.on ClickedEvent, handler, once: true, async: true, at: -1
 
-my.once ClickedEvent, handler, async:true, at: -1
+my.once ClickedEvent, handler, async: true, at: -1
 ```
 
 ### Emitting events
 
-Events can be emitted by calling `emit` and listing arguments one after another:
+Events can be emitted using `emit` in one of three ways:
+
+By listing event arguments one after another:
 
 ```crystal
 my.emit ClickedEvent, 10, 20
 ```
 
-Or by creating an event instance and packing arguments in it:
+By creating an event instance and packing arguments in it:
 
 ```crystal
 my.emit ClickedEvent, ClickedEvent.new(10, 20)
 ```
 
-In either case, the handler methods will receive one argument - the event object
+By creating an event instance and providing it as the single argument:
+
+```crystal
+event = ClickedEvent.new(10, 20)
+my.emit event
+```
+
+The handler methods will always receive one argument - the event object
 with packed arguments.
 
-Emitting an event returns a value. If all handlers run synchronously, the return
-value will be a Bool, indicating whether all handlers have completed successfully
-(`true`) or not (`false`).
-
-If one or more handlers run asynchronously, the return value is immediately `nil`.
+Emitting an event returns the event object.
 
 ### Handling events
 
@@ -304,12 +311,60 @@ The arguments are directly accessible as getters on the event object:
 ```
 my.on(ClickedEvent) do |e|
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
-  true
 end
 ```
 
-All handlers must return a Bool as their return value, indicating success (`true`)
-or failure (`false`).
+### Return values
+
+By default, all handlers are defined with Nil as their return type.
+This makes the value returned by blocks
+
+The only cases where an explicit `nil` is required to satisfy the
+type restriction are at the end of Procs defined with *->(){}* notation
+and at the end of methods without explicit return type:
+
+```crystal
+handler = ->(e : ClickedEvent) do
+  p "Hello"
+  nil
+end
+my.on ClickedEvent, handler
+
+def on_clicked(e : ClickedEvent)
+  p "Hello"
+  nil
+end
+```
+
+If event handlers should produce a return value, the recommended way to do
+it is to define a property on the Event class which the handlers will
+update:
+
+```crystal
+require "event_handler"
+
+EventHandler.event ClickedEvent, x : Int32, y : Int32
+
+class ClickedEvent < EventHandler::Event
+  property return_value : Int32 = 0
+end
+
+class MyClass
+	include ::EventHandler
+end
+c = MyClass.new
+
+c.on(ClickedEvent) { |e| e.return_value += e.x + e.y }
+
+event = c.emit ClickedEvent, 1,2
+p event.return_value # => 3
+
+c.emit ClickedEvent, event
+p event.return_value # => 6
+
+c.emit event
+p event.return_value # => 9
+```
 
 ### Inspecting event handlers
 
@@ -335,7 +390,7 @@ By handler Proc:
 
 ```crystal
 handler = ClickedEvent::Handler.new do |e|
-  true
+  p "Hello"
 end
 
 my.on ClickedEvent, handler
@@ -346,7 +401,7 @@ By handler hash:
 
 ```crystal
 handler = ClickedEvent::Handler.new do |e|
-  true
+  p "Hello"
 end
 
 hash = handler.hash
@@ -359,7 +414,7 @@ By handler wrapper object:
 
 ```crystal
 handler = ClickedEvent::Handler.new {
-  true
+  p "Hello"
 }
 
 wrapper = my.on ClickedEvent, handler
@@ -477,7 +532,6 @@ p channel.receive
 channel = Channel(ClickedEvent).new
 my.once(ClickedEvent, async: true) do |e|
   channel.send e
-  true
 end
 my.emit(ClickedEvent, 1,2)
 p channel.receive
@@ -495,19 +549,28 @@ avoiding visible use of Channels:
 e = my.wait(ClickedEvent)
 ```
 
-`wait` can also be invoked with a block or Proc:
+`wait` can also be invoked with code:
 
 ```crystal
 my.wait(ClickedEvent) do |e|
-  true
+  p "Hello"
 end
+
+handler = ClickedEvent::Handler.new do |e|
+  p "Hello"
+end
+my.wait ClickedEvent, handler
+
+def on_clicked(e : ClickedEvent) : Nil
+  p "Hello"
+end
+my.wait(ClickedEvent, ->on_clicked(ClickedEvent))
 ```
 
 The accepted syntax and arguments for `wait` are the same as
 for `once`.
 
-When waiting for events with a block or Proc, two handlers
-are involved:
+When waiting for events with code, two handlers are involved:
 
 The first, visible one is the handler provided to
 `wait`, containing code to execute once the event arrives.
@@ -548,9 +611,9 @@ class My
   include EventHandler
 
   def initialize
-    on(ClickedEvent)       {|e| p e; true }
-    on(DoubleClickedEvent) {|e| p e; true }
-    on(TripleClickedEvent) {|e| p e; true }
+    on(ClickedEvent)       {|e| p e }
+    on(DoubleClickedEvent) {|e| p e }
+    on(TripleClickedEvent) {|e| p e }
   end
 end
 my = My.new
@@ -600,22 +663,20 @@ class My
 
   def initialize
     # Install event handlers
-    on(ClickedEvent)           {|e| p e; true }
-    on(ClickedEvent::Subclass) {|e| p e; true }
-    on(ClickedEvent::Related)  {|e| p e; true }
+    on(ClickedEvent)           {|e| p e }
+    on(ClickedEvent::Subclass) {|e| p e }
+    on(ClickedEvent::Related)  {|e| p e }
   end
 
   # Override emit() to insert custom logic
   def emit(type, obj : EventHandler::Event)
     _emit EventHandler::AnyEvent, type, obj
 
-    ret = true
+    _emit type, obj
+    _emit type.subclass, obj
+    _emit type.related, obj
 
-    ret &&= _emit type, obj
-    ret &&= _emit type.subclass, obj
-    ret &&= _emit type.related, obj
-
-    ret
+    nil
   end
 end
 my = My.new

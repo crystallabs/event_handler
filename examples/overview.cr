@@ -19,7 +19,7 @@ end
 # And a Proc as event handler
 handler = ->(e : MyClass::ClickedEvent) do
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
-  true
+  nil
 end
 my.on MyClass::ClickedEvent, handler
 

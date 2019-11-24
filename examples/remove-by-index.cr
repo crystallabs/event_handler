@@ -7,7 +7,7 @@ class MyClass
 end
 c = MyClass.new
 
-c.on(ClickedEvent) { |e| p "Clicked (handler 1). Coordinates are x=#{e.x} y=#{e.y}"; true }
+c.on(ClickedEvent) { |e| p "Clicked (handler 1). Coordinates are x=#{e.x} y=#{e.y}" }
 
 c.emit ClickedEvent, 1,2
 

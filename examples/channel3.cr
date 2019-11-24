@@ -17,7 +17,7 @@ end
 sleep 1
 
 10.times do |i|
-  my.wait(ClickedEvent) { |e| print i; true }
+  my.wait(ClickedEvent) { |e| print i }
 end
 puts
 
