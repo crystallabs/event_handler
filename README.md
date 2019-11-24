@@ -169,6 +169,7 @@ Using an existing method:
 my = MyClass.new
 
 def on_clicked(e : ClickedEvent) : Nil
+  p "Hello"
 end
 
 my.on ClickedEvent, ->on_clicked(ClickedEvent)
@@ -182,7 +183,7 @@ class MyClass
   event ClickedEvent, x : Int32, y : Int32
 
   def on_clicked(e : ClickedEvent)
-    p :clicked, e.x, e.y, self
+    p "Hello", e.x, e.y, self
     nil
   end
 end
@@ -294,7 +295,7 @@ my.emit event
 The handler methods will always receive one argument - the event object
 with packed arguments.
 
-Emitting an event returns the event object.
+`emit` returns the event object.
 
 ### Handling events
 
@@ -303,7 +304,7 @@ As mentioned, handlers always receive one argument - the event object with packe
 When an event is emitted using any of the available variants, such as:
 
 ```crystal
-my.emit ClickedEvent, ClickedEvent.new x: 10, y: 20
+my.emit ClickedEvent, x: 10, y: 20
 ```
 
 The arguments are directly accessible as getters on the event object:
@@ -316,20 +317,22 @@ end
 
 ### Return values
 
-By default, all handlers are defined with Nil as their return type.
-This makes the value returned by blocks
+All handlers are defined with Nil as their return type.
+This makes the return value from handlers ignored regardless of what it is.
 
-The only cases where an explicit `nil` is required to satisfy the
+The only two cases where an explicit `nil` is required to satisfy the
 type restriction are at the end of Procs defined with *->(){}* notation
 and at the end of methods without explicit return type:
 
 ```crystal
+# At the end of Procs defined with ->(){} syntax
 handler = ->(e : ClickedEvent) do
   p "Hello"
   nil
 end
 my.on ClickedEvent, handler
 
+# At the end of methods without explicit return type
 def on_clicked(e : ClickedEvent)
   p "Hello"
   nil
