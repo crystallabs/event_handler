@@ -193,7 +193,7 @@ module EventHandler
         def remove_all_handlers(type : \{{e.id}}.class, emit = ::EventHandler.emit_on_remove_all?)
           if emit
             wrappers = _event_\{{event_name}}.uniq
-            wrappers.each do |w|
+            wrappers.dup.each do |w|
               off type, w
             end
           else
@@ -210,12 +210,6 @@ module EventHandler
         # Low-level function used to execute handlers and almost nothing else.
         # Regular users should use `#emit` instead.
         protected def _emit(type : \{{class_name}}.class, event : \{{class_name}}, async : Bool? = nil)
-          if _event_\{{event_name}}.empty?
-            if type == ::EventHandler::ExceptionEvent && event.is_a? ::EventHandler::ExceptionEvent
-              raise event.exception
-            end
-          end
-
           # This loop invokes all registered handlers, and also removes
           # those which were intended to run only once.
           _event_\{{event_name}}.dup.each do |handler|

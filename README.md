@@ -470,15 +470,13 @@ see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
 ### Meta Events
 
-There are four built-in events:
+There are three built-in events:
 
 `AddHandlerEvent` - Event emitted whenever a handler is added for any event, including itself.
 
 `RemoveHandlerEvent` - Event emitted whenever a handler is removed from any event, including itself.
 
 `AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments.
-
-`ExceptionEvent` - Event used for emitting exceptions. If an exception is emitted using this event and there are no handlers subscribed to it, the exception will instead be raised. Appropriateness of this event in the system core is still being evaluated.
 
 As mentioned, a wrapper object is implicitly created around a handler on every `on`, to encapsulate the handler and its
 subscription options (the values of `once?`, `async?`, and `at`).

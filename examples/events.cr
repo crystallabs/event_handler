@@ -55,13 +55,3 @@ c.emit ClickedEvent, ClickedEvent.new 3, 4
 #c.remove_all_handlers(ClickedEvent)
 
 c.emit ClickedEvent, ClickedEvent.new 3, 4
-
-# Add handler for ExceptionEvent. Emitting an exception with handler
-# present will invoke the handler rather than raise the exception.
-c.on(::EventHandler::ExceptionEvent) { |e| p "Running exception handler; ExceptionEvent won't raise" }
-c.emit(::EventHandler::ExceptionEvent, Exception.new "Example of a handled exception; it won't raise")
-
-# Remove the handlers for ExceptionEvent. Confirm that unhandled
-# ExceptionEvent will be raised.
-c.remove_all_handlers(::EventHandler::ExceptionEvent)
-c.emit(::EventHandler::ExceptionEvent, Exception.new "NOT A BUG, IT IS AN EXAMPLE -- there are no handlers for ExceptionEvent and it raises")

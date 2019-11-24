@@ -131,23 +131,6 @@ module EventHandler
       count.should eq 45
     end
 
-    it "raises if no handlers for ExceptionEvent" do
-      count = 0
-      c = TestEvents.new
-
-      c.on(::EventHandler::ExceptionEvent){|e| count += 1; true}
-      count.should eq 0
-
-      c.emit(::EventHandler::ExceptionEvent, Exception.new("Big error message"))
-      count.should eq 1
-
-      c.remove_all_handlers(::EventHandler::ExceptionEvent)
-
-      expect_raises Exception do
-        c.emit(::EventHandler::ExceptionEvent, Exception.new("Big error message"))
-      end
-    end
-
     it "emits AnyEvents" do
       count = 0
       c = TestEvents.new
