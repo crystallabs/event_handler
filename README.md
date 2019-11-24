@@ -340,9 +340,9 @@ def on_clicked(e : ClickedEvent)
 end
 ```
 
-If event handlers should produce a return value, the recommended way to do
-it is to define a property on the Event class which the handlers will
-update:
+If event handlers should produce a return value, the recommended way
+is to subclass Event into one that contains a return value, and which
+the handlers will update:
 
 ```crystal
 require "event_handler"
@@ -596,7 +596,7 @@ a new fiber.
 Event classes can be subclassed with no restrictions:
 
 ```crystal
-require "event_handler"
+require "../src/event_handler"
 
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
@@ -621,14 +621,41 @@ class My
     on(TripleClickedEvent) {|e| p e }
   end
 end
+
 my = My.new
-
 my.emit ClickedEvent, 1, 2
-
 my.emit DoubleClickedEvent, 3, 4
-
 my.emit TripleClickedEvent, 5, 6
 my.emit TripleClickedEvent, 7, 8, 9
+```
+
+For example, a subclass which counts the number of emits can be created:
+
+```crystal
+require "src/event_handler"
+
+abstract class EventWithCount < ::EventHandler::Event
+  class_property count : UInt64 = 0
+
+  def initialize
+    @@count += 1
+  end
+end
+
+class ClickedEvent < EventWithCount
+  getter x : Int32
+  getter y : Int32
+  def initialize(@x, @y)
+    super()
+  end
+end
+
+class My; include EventHandler end
+my = My.new
+
+4.times { my.emit ClickedEvent, 1, 2 }
+
+p ClickedEvent.count # => 4
 ```
 
 ### Custom behavior
