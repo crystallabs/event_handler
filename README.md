@@ -319,11 +319,10 @@ end
 
 All handlers are defined with Nil as their return type.
 This makes the return value from handlers ignored regardless of what it is.
-
 There are only two cases where an explicit `nil` is required to satisfy the
-type restriction.
+type restriction:
 
-At the end of Procs defined with *->(){}* notation:
+At the end of Procs defined with *->(){}* syntax:
 
 ```crystal
 handler = ->(e : ClickedEvent) do
@@ -333,7 +332,7 @@ end
 my.on ClickedEvent, handler
 ```
 
-And at the end of methods without explicit return type:
+At the end of methods without explicit return type:
 
 ```crystal
 def on_clicked(e : ClickedEvent)
@@ -350,13 +349,12 @@ update:
 require "event_handler"
 
 EventHandler.event ClickedEvent, x : Int32, y : Int32
-
 class ClickedEvent < EventHandler::Event
   property return_value : Int32 = 0
 end
 
 class MyClass
-	include ::EventHandler
+  include ::EventHandler
 end
 c = MyClass.new
 
