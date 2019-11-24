@@ -553,26 +553,27 @@ avoiding visible use of Channels:
 e = my.wait(ClickedEvent)
 ```
 
-`wait` can also be invoked with code:
+`wait` can also be invoked with code. The accepted syntax and
+arguments are the same as for `once`:
 
 ```crystal
+# With a block
 my.wait(ClickedEvent) do |e|
   p "Hello"
 end
 
+# With a Proc
 handler = ClickedEvent::Handler.new do |e|
   p "Hello"
 end
 my.wait ClickedEvent, handler
 
+# With a method
 def on_clicked(e : ClickedEvent) : Nil
   p "Hello"
 end
 my.wait(ClickedEvent, ->on_clicked(ClickedEvent))
 ```
-
-The accepted syntax and arguments for `wait` are the same as
-for `once`.
 
 When waiting for events with code, two handlers are involved:
 
