@@ -26,7 +26,7 @@ Add the dependency to `shard.yml`:
 dependencies:
   event_handler:
     github: crystallabs/event_handler
-    version: 0.12.0
+    version: 0.13.0
 ```
 
 ## Usage in a nutshell

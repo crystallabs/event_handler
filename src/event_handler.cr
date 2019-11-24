@@ -1,5 +1,5 @@
 module EventHandler
-  VERSION = "0.12.0"
+  VERSION = "0.13.0"
 end
 
 require "./macros"
