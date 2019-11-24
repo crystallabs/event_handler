@@ -88,15 +88,6 @@ module EventHandler
   macro finished
     \{% begin %}
       \{% for e in ::EventHandler::Event.all_subclasses %}
-        # Use this with .32 when supposedly reduce() becomes available?
-        #  initialize = (e.methods + (e.ancestors.map(&.methods).reduce(...))).find(&.name.==("initialize"))
-        \{% initialize = e.methods.find(&.name.==("initialize")) %}
-        \{% if !initialize %}
-          \{% for p in e.ancestors %}
-            \{% initialize = p.methods.find(&.name.==("initialize")) if !initialize %}
-          \{% end %}
-        \{% end %}
-        \{% args = initialize.args.map(&.restriction) %}
         \{% event_name = e.name.identify.downcase.split('(').first.id %}
         \{% class_name = e.name.split('(').first.id %}
 
