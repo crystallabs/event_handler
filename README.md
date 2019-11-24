@@ -127,7 +127,7 @@ Using a block:
 ```crystal
 my = MyClass.new
 
-my.on(ClickedEvent) do |e|
+my.on ClickedEvent do |e|
   p "Hello"
 end
 ```
@@ -273,23 +273,22 @@ my.once ClickedEvent, handler, async: true, at: -1
 
 Events can be emitted using `emit` in one of three ways:
 
-By listing event arguments one after another:
+By listing event class and arguments one after another:
 
 ```crystal
 my.emit ClickedEvent, 10, 20
 ```
 
-By creating an event instance and packing arguments in it:
+By listing event class and event instance one after another:
 
 ```crystal
-my.emit ClickedEvent, ClickedEvent.new(10, 20)
+my.emit ClickedEvent, ClickedEvent.new 10, 20
 ```
 
 By creating an event instance and providing it as the single argument:
 
 ```crystal
-event = ClickedEvent.new(10, 20)
-my.emit event
+my.emit ClickedEvent.new 10, 20
 ```
 
 The handler methods will always receive one argument - the event object
@@ -310,7 +309,7 @@ my.emit ClickedEvent, x: 10, y: 20
 The arguments are directly accessible as getters on the event object:
 
 ```
-my.on(ClickedEvent) do |e|
+my.on ClickedEvent do |e|
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
 end
 ```
@@ -509,7 +508,7 @@ The same behavior can also be implemented manually:
 ```crystal
 channel = Channel(ClickedEvent).new
 
-my.on(ClickedEvent, async: true) do |e|
+my.on ClickedEvent, async: true do |e|
   channel.send e
 end
 ```
@@ -534,7 +533,7 @@ p channel.receive
 
 # Same as above, implemented manually
 channel = Channel(ClickedEvent).new
-my.once(ClickedEvent, async: true) do |e|
+my.once ClickedEvent, async: true do |e|
   channel.send e
 end
 my.emit(ClickedEvent, 1,2)
@@ -558,7 +557,7 @@ arguments are the same as for `once`:
 
 ```crystal
 # With a block
-my.wait(ClickedEvent) do |e|
+my.wait ClickedEvent do |e|
   p "Hello"
 end
 
