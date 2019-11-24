@@ -333,7 +333,6 @@ handler = ->(e : ClickedEvent) do
   p "Hello"
   nil
 end
-my.on ClickedEvent, handler
 ```
 
 At the end of methods without explicit return type:
@@ -601,7 +600,7 @@ a new fiber.
 Event classes can be subclassed with no restrictions:
 
 ```crystal
-require "../src/event_handler"
+require "event_handler"
 
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
