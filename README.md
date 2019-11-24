@@ -316,8 +316,8 @@ end
 
 ### Return values
 
-All handlers are defined with Nil as their return type.
-This makes the return value from handlers ignored regardless of what it is.
+All handlers are defined with Nil as their return type and their return
+value is ignored.
 There are only two cases where an explicit `nil` is required to satisfy the
 type restriction:
 
@@ -347,10 +347,11 @@ update:
 ```crystal
 require "event_handler"
 
-EventHandler.event ClickedEvent, x : Int32, y : Int32
-class ClickedEvent < EventHandler::Event
+class EventWithRetval < ::EventHandler::Event
   property return_value : Int32 = 0
 end
+
+class_record ClickedEvent < EventWithRetval, x : Int32, y : Int32
 
 class MyClass
   include ::EventHandler
