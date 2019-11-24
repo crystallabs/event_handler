@@ -273,13 +273,13 @@ my.once ClickedEvent, handler, async: true, at: -1
 
 Events can be emitted using `emit` in one of three ways:
 
-By listing event class and arguments one after another:
+By listing the event class and arguments one after another:
 
 ```crystal
 my.emit ClickedEvent, 10, 20
 ```
 
-By listing event class and event instance one after another:
+By listing the event class and event instance one after another:
 
 ```crystal
 my.emit ClickedEvent, ClickedEvent.new 10, 20
@@ -292,9 +292,7 @@ my.emit ClickedEvent.new 10, 20
 ```
 
 The handler methods will always receive one argument - the event object
-with packed arguments.
-
-`emit` returns the event object.
+with packed arguments. The return value from `emit` is that object.
 
 ### Handling events
 
@@ -318,7 +316,14 @@ end
 
 All handlers are defined with Nil as their return type and their return
 value is ignored.
-There are only two cases where an explicit `nil` is required to satisfy the
+
+```crystal
+my.on ClickedEvent do |e|
+  p "Hello"
+end
+```
+
+There are two cases where an explicit `nil` is required to satisfy the
 type restriction:
 
 At the end of Procs defined with *->(){}* syntax:
