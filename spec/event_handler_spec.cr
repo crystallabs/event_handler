@@ -64,7 +64,8 @@ module EventHandler
       c.on(ClickedEvent){|e| count += 1; e.x; e.y; true}
       count.should eq 0
 
-      c.emit ClickedEvent, 1,1
+      clicked = ClickedEvent.new 1,1
+      c.emit clicked
       count.should eq 1
 
       c.emit ClickedEvent, 1,1

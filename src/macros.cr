@@ -237,9 +237,8 @@ module EventHandler
           _emit(type, event)
         end
         # :ditto:
-        def emit(event : ::EventHandler::Event)
-          _emit ::EventHandler::AnyEvent, event.class, event.as \{{e.id}}
-          _emit(event.class, event)
+        def emit(event : \{{e.id}})
+          emit event.class, event
         end
         # :ditto:
         def emit(type : \{{e.id}}.class, *args)
