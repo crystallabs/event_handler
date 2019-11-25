@@ -233,12 +233,12 @@ module EventHandler
         # If all handlers run synchronously, returns Bool.
         # If any handler runs asynchronously, returns nil.
         def emit(type : \{{e.id}}.class, event : ::EventHandler::Event)
-          _emit ::EventHandler::AnyEvent, \{{e.id}}, event
+          _emit ::EventHandler::AnyEvent, \{{e.id}}, event.as \{{e.id}}
           _emit(type, event)
         end
         # :ditto:
         def emit(event : ::EventHandler::Event)
-          _emit ::EventHandler::AnyEvent, event.class, event
+          _emit ::EventHandler::AnyEvent, event.class, event.as \{{e.id}}
           _emit(event.class, event)
         end
         # :ditto:
