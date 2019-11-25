@@ -25,7 +25,7 @@ module EventHandler
       c.handlers(ClickedEvent).size.should eq 0
       count.should eq 4
 
-      handler = ClickedEvent::Handler.new() { |e| true }
+      handler = ClickedEvent::Handler.new() { |e| e.x; e.y; true }
 
       w1 = c.on(ClickedEvent, handler)
       w2 = c.on(ClickedEvent, handler)

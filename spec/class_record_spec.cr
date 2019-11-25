@@ -27,9 +27,9 @@ module EventHandler
       c = TestReopen.new
       count = 0
 
-      c.on(OneEvent) { count += 1; true }
-      c.on(TwoEvent) { count += 1; true }
-      c.on(ThreeEvent) { count += 1; true }
+      c.on(OneEvent)   { |e| count += 1; e.x; true }
+      c.on(TwoEvent)   { |e| count += 1; e.x; e.y; true }
+      c.on(ThreeEvent) { |e| count += 1; e.x; e.y; true }
 
       c.emit OneEvent, 1
       c.emit TwoEvent, 2

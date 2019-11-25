@@ -61,7 +61,7 @@ module EventHandler
     it "works for custom events" do
       count = 0
       c = TestEvents.new
-      c.on(ClickedEvent){|e| count += 1; true}
+      c.on(ClickedEvent){|e| count += 1; e.x; e.y; true}
       count.should eq 0
 
       c.emit ClickedEvent, 1,1
@@ -102,7 +102,7 @@ module EventHandler
         c.wait(ClickedEvent).class.should eq ClickedEvent
       end
       spawn do
-        c.wait(ClickedEvent) { |e| e.class.should eq ClickedEvent; true}
+        c.wait(ClickedEvent) { |e| e.class.should eq ClickedEvent; e.x; e.y; true}
       end
       spawn do
         c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; nil})
@@ -125,7 +125,7 @@ module EventHandler
       sleep 0.5
 
       10.times do |i|
-        c.wait(ClickedEvent) { |e| count += i; true }
+        c.wait(ClickedEvent) { |e| count += i; e.x; e.y; true }
       end
 
       count.should eq 45
@@ -135,7 +135,7 @@ module EventHandler
       count = 0
       c = TestEvents.new
 
-      c.on(ClickedEvent){|e| true}
+      c.on(ClickedEvent){|e| e.x; e.y; true}
       c.on(::EventHandler::AnyEvent){|e| count += 1; true}
       c.emit ClickedEvent, 1,1
       count.should eq 1
