@@ -208,8 +208,8 @@ module EventHandler
         # See README for detailed description of this behavior.
         def remove_all_handlers(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
           if emit
-            wrappers = \{{handlers_list.id}}.uniq
-            wrappers.dup.each do |w|
+            wrappers = \{{handlers_list.id}}.dup.uniq
+            wrappers.each do |w|
               off type, w
             end
           else
