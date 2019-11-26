@@ -88,13 +88,13 @@ module EventHandler
   macro finished
     \{% begin %}
       \{% for e in ::EventHandler::Event.all_subclasses %}
-        \{% event_name = e.name.identify.downcase.split('(').first.id %}
+        \{% handlers_list = "_event_" + e.name.identify.underscore.tr("()","__").stringify %}
         \{% event_class = e.name.split('(').first.id %}
 
-        private getter _event_\{{event_name}} = Array(Wrapper(Proc(\{{event_class}}, Nil))).new
+        private getter \{{handlers_list.id}} = Array(Wrapper(Proc(\{{event_class}}, Nil))).new
 
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(Proc(Event, Nil)))
-          _event_\{{event_name}}.insert wrapper.at, wrapper
+          \{{handlers_list.id}}.insert wrapper.at, wrapper
           _emit AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
           wrapper
         end
@@ -162,26 +162,26 @@ module EventHandler
 
         # Removes *handler* from list of handlers for event *type*.
         def off(type : \{{event_class}}.class, handler : Proc(\{{event_class}}, Nil))
-          if wrapper = _event_\{{event_name}}.find {|h| h.handler == handler }
+          if wrapper = \{{handlers_list.id}}.find {|h| h.handler == handler }
             off type, wrapper
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, hash : UInt64)
-          if wrapper = _event_\{{event_name}}.find {|h| h.handler_hash == hash }
+          if wrapper = \{{handlers_list.id}}.find {|h| h.handler_hash == hash }
             off type, wrapper
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
-          if w = _event_\{{event_name}}.delete wrapper
+          if w = \{{handlers_list.id}}.delete wrapper
            _emit RemoveHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
            w
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, at : Int)
-          off type, _event_\{{event_name}}[at]
+          off type, \{{handlers_list.id}}[at]
         end
 
         # Removes all handlers for event *type*.
@@ -192,19 +192,19 @@ module EventHandler
         # See README for detailed description of this behavior.
         def remove_all_handlers(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
           if emit
-            wrappers = _event_\{{event_name}}.uniq
+            wrappers = \{{handlers_list.id}}.uniq
             wrappers.dup.each do |w|
               off type, w
             end
           else
-            _event_\{{event_name}}.clear
+            \{{handlers_list.id}}.clear
           end
           true
         end
 
         # Returns list of handlers for event *type*.
         def handlers(type : \{{event_class}}.class)
-          _event_\{{event_name}}
+          \{{handlers_list.id}}
         end
 
         # Low-level function used to execute handlers and almost nothing else.
@@ -212,7 +212,7 @@ module EventHandler
         protected def _emit(type : \{{event_class}}.class, event : \{{event_class}}, async : Bool? = nil)
           # This loop invokes all registered handlers, and also removes
           # those which were intended to run only once.
-          _event_\{{event_name}}.dup.each do |handler|
+          \{{handlers_list.id}}.dup.each do |handler|
             handler.call(event, async)
             if handler.once?
               off type, handler
