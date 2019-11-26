@@ -228,17 +228,10 @@ module EventHandler
           _emit type, \{{e.id}}.new *args
         end
 
-        # Emits event *type* with provided parameters.
-        #
-        # If all handlers run synchronously, returns Bool.
-        # If any handler runs asynchronously, returns nil.
-        def emit(type : \{{e.id}}.class, event : ::EventHandler::Event)
-          _emit ::EventHandler::AnyEvent, \{{e.id}}, event.as \{{e.id}}
+        # Emits *event* of *type*.
+        def emit(type : \{{e.id}}.class, event : \{{e.id}})
+          _emit ::EventHandler::AnyEvent, event
           _emit(type, event)
-        end
-        # :ditto:
-        def emit(event : \{{e.id}})
-          emit event.class, event
         end
         # :ditto:
         def emit(type : \{{e.id}}.class, *args)
@@ -247,6 +240,7 @@ module EventHandler
         end
 
       \{% end %}
+
     \{% end %}
   end
 end

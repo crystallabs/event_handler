@@ -137,7 +137,13 @@ module EventHandler
       c = TestEvents.new
 
       c.on(ClickedEvent){|e| e.x; e.y; true}
-      c.on(::EventHandler::AnyEvent){|e| count += 1; if e.is_a?(ClickedEvent); e.event.x end; true}
+      c.on(::EventHandler::AnyEvent){|e|
+      count += 1;
+      x = e.event
+      if x.is_a? ClickedEvent
+        x.x
+      end
+      }
       c.emit ClickedEvent, 1,1
       count.should eq 1
     end

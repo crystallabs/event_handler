@@ -6,7 +6,6 @@ module EventHandler
   # Adding a handler for this event allows listening for all emitted events
   # and their arguments.
   class_record AnyEvent < Event,
-    event_type : ::EventHandler::Event.class,
     event : ::EventHandler::Event
 
   # Meta event, emitted whenever a handler is added for any event, including itself.

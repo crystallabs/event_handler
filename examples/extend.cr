@@ -24,15 +24,12 @@ class My
   end
 
   def emit(type, obj : EventHandler::Event)
-    _emit EventHandler::AnyEvent, type, obj
+    _emit EventHandler::AnyEvent, obj
 
-    ret = true
+    _emit type, obj
+    _emit type.subclass, obj
+    _emit type.related, obj
 
-    ret &&= _emit type, obj
-    ret &&= _emit type.subclass, obj
-    ret &&= _emit type.related, obj
-
-    ret
   end
 end
 my = My.new

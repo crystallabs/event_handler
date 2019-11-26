@@ -36,7 +36,7 @@ c.on ClickedEvent, hnd
 # Listen on 3 built-in/meta events:
 c.on(::EventHandler::AddHandlerEvent){|e| p "Handler added for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"}
 c.on(::EventHandler::RemoveHandlerEvent){|e| p "Handler removed for #{e.event}! Settings: once=#{e.handler.once?}, async=#{e.handler.async?}, at=#{e.handler.at}"}
-c.on(::EventHandler::AnyEvent) { |e| p "AnyEvent: #{e.class} was emitted" }
+c.on(::EventHandler::AnyEvent) { |e| p "AnyEvent: #{e.class} was emitted: #{e.inspect}" }
 
 # And also the 4th time with options for *async*, *once*, and *at*.
 # *async* specifies whether event handler will be invoked in a `Fiber`.
