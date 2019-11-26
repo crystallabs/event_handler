@@ -19,7 +19,7 @@ module EventHandler
   # the added handlers and their settings.
   class_record AddHandlerEvent < Event,
     event : ::EventHandler::Event.class,
-    handler : ::EventHandler::Wrapper(Proc(Event, Nil))
+    wrapper : ::EventHandler::Wrapper(Proc(Event, Nil))
 
   # Meta event, emitted whenever a handler is removed from any event, including itself.
   #
@@ -32,5 +32,5 @@ module EventHandler
   # the added handlers and their settings.
   class_record RemoveHandlerEvent < Event,
     event : ::EventHandler::Event.class,
-    handler : ::EventHandler::Wrapper(Proc(Event, Nil))
+    wrapper : ::EventHandler::Wrapper(Proc(Event, Nil))
 end
