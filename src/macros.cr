@@ -95,7 +95,15 @@ module EventHandler
 
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(Proc(Event, Nil)))
           \{{handlers_list.id}}.insert wrapper.at, wrapper
+
+          # Use this:
           _emit AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
+
+          # Or this:
+          #handler2 = Proc(Event,Nil).new do |e| wrapper.handler.call e.as \ { {e.id}} end
+          #wrapper2 = ::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
+          #_emit AddHandlerEvent, type, wrapper2
+
           wrapper
         end
         private def internal_insert(type : \{{event_class}}.class, handler : Proc(\{{event_class}}, Nil), once : Bool, async : Bool, at : Int)
@@ -175,7 +183,15 @@ module EventHandler
         # :ditto:
         def off(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
           if w = \{{handlers_list.id}}.delete wrapper
-           _emit RemoveHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
+
+            # Use this:
+            _emit RemoveHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)))
+
+            # Or this:
+            #handler2 = Proc(Event,Nil).new do |e| wrapper.handler.call e.as \ { {e.id}} end
+            #wrapper2 = ::EventHandler::Wrapper(Proc(::EventHandler::Event, Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
+            #_emit RemoveHandlerEvent, type, wrapper2
+
            w
           end
         end

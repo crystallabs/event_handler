@@ -10,23 +10,29 @@ x = X.new
 handler = ClickedEvent::Handler.new {
   true
 }
-
 wrapper = x.on ClickedEvent, handler
+x.on ClickedEvent, wrapper
 
-p x.handlers ClickedEvent
-
-x.off ClickedEvent, wrapper
 
 wrapper = ::EventHandler::Wrapper.new(handler)
+x.on ClickedEvent, wrapper
 
-p handler.class
 
-wrapper = ::EventHandler::Wrapper(Proc(EventHandler::Event,Bool)).new() { |x|
+wrapper = ClickedEvent::Wrapper.new() { |x|
   true
 }
+x.on ClickedEvent, wrapper
 
-wrapper2 = ClickedEvent::Wrapper.new() { |x|
+wrapper = ::EventHandler::Wrapper(Proc(ClickedEvent,Nil)).new() { |x|
   true
 }
+x.on ClickedEvent, wrapper
 
-#x.on ClickedEvent, wrapper
+p x.handlers(ClickedEvent).size
+
+x.on ::EventHandler::AddHandlerEvent do |e|
+  p e
+  p e.wrapper.once?
+end
+
+x.emit ClickedEvent, 1,2
