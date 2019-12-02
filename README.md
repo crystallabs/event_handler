@@ -770,3 +770,5 @@ List of interesting or similar projects in no particular order:
 - https://github.com/vladfaust/callbacks.cr - Expressive callbacks module for Crystal
 
 - https://github.com/anykeyh/await_async - Provide await and async methods to Crystal
+
+- https://github.com/firejox/CrSignals -  Signals/slots notification library in Crystal
