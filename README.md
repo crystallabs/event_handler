@@ -393,10 +393,10 @@ c.emit event
 p event.return_value # => 9
 ```
 
-The above example will work as long as event handlers are invoked synchronously.
-Running one or more handlers asynchronously and checking for the return value
-after all handlers have finished execution is currently not addressed as part
-of built-in functionality.
+Please note the above example will work correctly as long as event handlers are
+invoked synchronously. Running one or more handlers asynchronously and checking
+for the return value after all handlers have finished execution is currently not
+addressed as part of built-in functionality.
 
 ### Inspecting event handlers
 
