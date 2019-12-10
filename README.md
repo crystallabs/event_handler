@@ -482,14 +482,16 @@ By removing all handlers at once:
 my.off ClickedEvent
 
 # With remove_all_handlers
-my.remove_all_handlers ClickedEvent
+my.remove_all_handlers ClickedEvent, emit: false
 ```
 
 When all handlers are removed at once, `RemoveHandlerEvent`s will be emitted as
 expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
+
 If emitting `RemoveHandlerEvent` events should be disabled when removing all handlers,
-see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
+see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=` to change
+the default or provide argument *emit*.
 
 ### Meta Events
 

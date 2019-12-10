@@ -218,8 +218,8 @@ module EventHandler
           true
         end
         # :ditto:
-        def off(*arg)
-          remove_all_handlers *arg
+        def off(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
+          remove_all_handlers type, emit
         end
 
         # Returns list of handlers for event *type*.
