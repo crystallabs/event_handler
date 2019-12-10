@@ -52,6 +52,15 @@ module EventHandler
 
       c.handlers(ClickedEvent).size.should eq 0
 
+      c.on(ClickedEvent, handler)
+      c.on(ClickedEvent, handler)
+      c.on(ClickedEvent, handler)
+
+      c.handlers(ClickedEvent).size.should eq 3
+
+      c.off(ClickedEvent)
+
+      c.handlers(ClickedEvent).size.should eq 0
     end
   end
 end

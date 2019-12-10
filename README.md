@@ -62,9 +62,11 @@ my.on MyClass::TestEvent, handler
 my.emit ClickedEvent, 10, 20
 my.emit MyClass::TestEvent, "Hello, World!", true
 
-# Remove handlers
+# Remove handler
 my.off MyClass::TestEvent, handler
-my.remove_all_handlers ClickedEvent
+
+# Remove all handlers at once
+my.off ClickedEvent
 ```
 
 ## Documentation
@@ -476,13 +478,17 @@ my.off ClickedEvent, at: 0
 By removing all handlers at once:
 
 ```crystal
+# With off
+my.off ClickedEvent
+
+# With remove_all_handlers
 my.remove_all_handlers ClickedEvent
 ```
 
-When `remove_all_handlers` is used, `RemoveHandlerEvent`s will be emitted as
+When all handlers are removed at once, `RemoveHandlerEvent`s will be emitted as
 expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
-If emitting `RemoveHandlerEvent` events should be disabled for `remove_all_handlers`,
+If emitting `RemoveHandlerEvent` events should be disabled when removing all handlers,
 see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=`.
 
 ### Meta Events
@@ -565,7 +571,7 @@ p channel.receive
 Using Channels, it is also possible to wait for events.
 
 The above example already shows blocking on `channel.receive`.
-The same effect can be achieved using `wait` and
+The same effect can be achieved using convenience method `wait` and
 avoiding visible use of Channels:
 
 ```crystal
