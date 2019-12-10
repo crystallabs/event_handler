@@ -185,7 +185,7 @@ module EventHandler
           if w = \{{handlers_list.id}}.delete wrapper
 
             # Use this:
-            _emit ::EventHandler::RemoveHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+            _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
 
             # Or this:
             #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as \ { {e.id}} end
