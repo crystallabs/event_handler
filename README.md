@@ -87,7 +87,7 @@ It is a shorthand for the following line:
 class_record ClickedEvent < ::EventHandler::Event, x : Int32, y : Int32
 ```
 
-`class_record` is EventHandler's variant of Crystal's macro `record`; it creates classes instead of structs.
+(`class_record` is EventHandler's variant of Crystal's macro `record`; it creates classes instead of structs.)
 
 If additional modification to the class is necessary, class can be reopened:
 
@@ -269,6 +269,15 @@ All of the above methods for adding handlers support arguments `once`, `async`, 
 Default is false. In the future this option may be replaced with `times` which specifies
 how many times to run before being removed.
 
+As a convenience for adding handlers that should run only once, there is a method
+named `once` available instead of the usual `on`. These two calls are equivalent:
+
+```crystal
+my.on ClickedEvent, handler, once: true, async: true, at: -1
+
+my.once ClickedEvent, handler, async: true, at: -1
+```
+
 `async` specifies whether a handler should run synchronously or asynchronously. If
 no specific value is provided, global default from `EventEmitter.async` is used.
 Default (`EventEmitter.async?`) is false. You can either modify this default,
@@ -278,15 +287,6 @@ or specify `async` on a per-`on` basis.
 While it is possible to specify the exact position, usually this value is
 `0` (`EventEmitter.at_beginning`) to insert at the beginning or `-1` (`EventEmitter.at_end`)
 to insert at the end of list. Default is `EventEmitter.at_end`.
-
-As a convenience for adding handlers that should run only once, there is a method
-named `once` available instead of the usual `on`. These two calls are equivalent:
-
-```crystal
-my.on ClickedEvent, handler, once: true, async: true, at: -1
-
-my.once ClickedEvent, handler, async: true, at: -1
-```
 
 ### Emitting events
 
@@ -494,16 +494,16 @@ When all handlers are removed at once, `RemoveHandlerEvent`s will be emitted as
 expected, and multiple identical wrappers will be removed according to the
 above-documented behavior.
 If emitting `RemoveHandlerEvent` events should be disabled when removing all handlers,
-see `EventEmitter.emit_on_remove_all?` and `EventEmitter.emit_on_remove_all=` to change
-the default, or provide argument *emit*.
+provide argument *emit* or use `EventEmitter.emit_on_remove_all?` and
+`EventEmitter.emit_on_remove_all=` to change the default value.
 
 ### Meta Events
 
 There are three built-in events:
 
-`AddHandlerEvent` - Event emitted whenever a handler is added for any event, including itself.
+`AddHandlerEvent` - Event emitted after a handler is added for any event, including itself.
 
-`RemoveHandlerEvent` - Event emitted whenever a handler is removed from any event, including itself.
+`RemoveHandlerEvent` - Event emitted after a handler is removed from any event, including itself.
 
 `AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments.
 
@@ -612,7 +612,8 @@ The first, visible one is the handler provided to
 `wait`, containing code to execute once the event arrives.
 `wait` argument *async* controls whether this handler will
 run synchronously or asynchronously after the event has been
-waited.
+waited. This is consistent with the usual behavior and the
+default value is `false` (`EventHandler.async?`).
 
 The other, implicit one is the handler automatically created
 and added to the list of event handlers. Once the event is
@@ -620,7 +621,7 @@ emitted and this handler runs, it will forward the received
 event into the Channel.
 `wait` argument *async_send* controls whether the event emitter
 will block on `channel.send` or it will execute it in
-a new fiber.
+a new fiber. The default value is `false` (`EventHandler.async_send?`).
 
 ### Subclassing
 
@@ -660,7 +661,7 @@ my.emit TripleClickedEvent, 5, 6
 my.emit TripleClickedEvent, 7, 8, 9
 ```
 
-For example, a subclass which counts the number of emits can be created:
+Here is an example of an Event subclass that counts the number of emits:
 
 ```crystal
 require "src/event_handler"
@@ -668,8 +669,9 @@ require "src/event_handler"
 abstract class EventWithCount < ::EventHandler::Event
   class_property count : UInt64 = 0
 
-  def initialize
+  def emit(*arg)
     @@count += 1
+    super *arg
   end
 end
 
