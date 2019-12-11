@@ -661,7 +661,8 @@ my.emit TripleClickedEvent, 5, 6
 my.emit TripleClickedEvent, 7, 8, 9
 ```
 
-Here is an example of an Event subclass that counts the number of emits:
+Here is an example of an Event subclass that counts the number of times
+the event was instantiated:
 
 ```crystal
 require "src/event_handler"
@@ -669,9 +670,8 @@ require "src/event_handler"
 abstract class EventWithCount < ::EventHandler::Event
   class_property count : UInt64 = 0
 
-  def emit(*arg)
+  def initialize
     @@count += 1
-    super *arg
   end
 end
 
