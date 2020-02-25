@@ -665,7 +665,7 @@ Here is an example of an Event subclass that counts the number of times
 the event was instantiated:
 
 ```crystal
-require "src/event_handler"
+require "event_handler"
 
 abstract class EventWithCount < ::EventHandler::Event
   class_property count : UInt64 = 0
