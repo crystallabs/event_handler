@@ -785,4 +785,6 @@ List of interesting or similar projects in no particular order:
 
 - https://github.com/anykeyh/await_async - Provide await and async methods to Crystal
 
-- https://github.com/firejox/CrSignals -  Signals/slots notification library in Crystal
+- https://github.com/firejox/CrSignals - Signals/slots notification library in Crystal
+
+- https://github.com/crystal-community/future.cr - Provides delay, future, and lazy convenient methods
