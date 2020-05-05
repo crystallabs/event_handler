@@ -39,7 +39,7 @@ require "event_handler"
 # Define an event
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
-# Create an event-enabled class
+# Define an event inside a namespace
 class MyClass
   include EventHandler
   event TestEvent, message : String, status : Bool
