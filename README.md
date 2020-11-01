@@ -51,7 +51,7 @@ my.on(ClickedEvent) do |e|
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
 end
 
-# And a Proc as event handler
+# Add a Proc as event handler
 handler = ->(e : MyClass::TestEvent) do
   puts "Activated on #{e.class}. Message is '#{e.message}' and status is #{e.status}"
   nil
@@ -735,7 +735,7 @@ class My
 
   # Override emit() to insert custom logic
   def emit(type, obj : EventHandler::Event)
-    _emit EventHandler::AnyEvent, type, obj
+    _emit EventHandler::AnyEvent, obj
 
     _emit type, obj
     _emit type.subclass, obj
