@@ -5,7 +5,7 @@ module EventHandler
   # Meta event, emitted on every other event.
   # Adding a handler for this event allows listening for all emitted events
   # and their arguments.
-  class_record AnyEvent < Event,
+  event AnyEvent,
     event : ::EventHandler::Event
 
   # Meta event, emitted whenever a handler is added for any event, including itself.
@@ -17,7 +17,7 @@ module EventHandler
   # arguments used during handler subscription (values of *once?*, *async?*,
   # and *at*). This allows listeners on these meta events full insight into
   # the added handlers and their settings.
-  class_record AddHandlerEvent < Event,
+  event AddHandlerEvent,
     event : ::EventHandler::Event.class,
     wrapper : ::EventHandler::Wrapper(Proc(Event, Nil))
 
@@ -30,7 +30,7 @@ module EventHandler
   # arguments used during handler subscription (values of *once?*, *async?*,
   # and *at*). This allows listeners on these meta events full insight into
   # the added handlers and their settings.
-  class_record RemoveHandlerEvent < Event,
+  event RemoveHandlerEvent,
     event : ::EventHandler::Event.class,
     wrapper : ::EventHandler::Wrapper(Proc(Event, Nil))
 end
