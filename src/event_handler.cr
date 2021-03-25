@@ -1,5 +1,5 @@
 module EventHandler
-  VERSION = "0.15.2"
+  VERSION = "1.0.0"
 
   # Emits *event* of of type *event.class*
   def emit(event : ::EventHandler::Event)
