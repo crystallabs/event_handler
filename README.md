@@ -42,10 +42,8 @@ EventHandler.event ClickedEvent, x : Int32, y : Int32
 class MyClass
   include EventHandler
 
-  # Define a handler that will run in response to the event
   def initialize
-
-    # Add a block as event handler
+    # Define a handler that will run in response to the event
     on(::ClickedEvent) do |e|
       puts "Clicked on position x=#{e.x}, y=#{e.y}"
     end
@@ -59,10 +57,10 @@ my.emit ClickedEvent, 10, 20 #=> "Clicked on position x=10, y=20"
 
 Or another example:
 
-```
+```cr
 require "event_handler"
 
-# Define an event inside a namespace
+# Define an event inside a namespace (MyClass::TestEvent)
 class MyClass
   include EventHandler
   event TestEvent, message : String, status : Bool
@@ -458,10 +456,9 @@ gives handler a new wrapper object even if the same handler is added multiple
 times for the same event. A call to
 `off()` will find the first instance of this handler, then remove all
 instances of its wrapper from the list (there will be only one), and then
-`RemoveHandlerEvent` will be invoked with that instance as argument.
-If a handler is added to an event more than once via any method that does not
-involve directly adding a handler, it will be necessary to call `off()`
-multiple times to remove all instances.
+invoke `RemoveHandlerEvent` with that instance as argument.
+If a handler is added to an event more than once, it will be necessary to call
+`off()` multiple times to remove all instances.
 
 When handlers are added by using their wrappers directly, multiple identical
 wrapper objects will be present in the list.
@@ -511,7 +508,7 @@ As mentioned, a wrapper object is implicitly created around a handler on every `
 subscription options (the values of `once?`, `async?`, and `at`).
 When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the
 handlers' `Wrapper` object as argument.
-This allows listeners on these two meta events full insight into the added or removed handlers and their subscription settings.
+This allows listeners on these two meta events full insight into the added or removed handlers and their subscription data.
 
 ### Channels
 
