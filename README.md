@@ -9,14 +9,14 @@ EventHandler is a full-featured event library for Crystal.
 It supports:
 
 1. Defining events
-1. Emitting events
-1. Adding and removing handlers for emitted events
+1. Defining handlers that will run in response to events
+1. And, obviously, emitting / triggering those events
 
-Each handler can run synchronously or asynchronously, run one or more times,
-and be added at the beginning or end of queue, or into a specific position.
+Each handler can run synchronously or asynchronously, run one or more
+times, and be added at the beginning or end of queue, or into a specific position.
 
-It also supports subclassing events, sending events through Channels,
-and waiting for events.
+Subclassing events is also supported, as well as sending events through Channels
+and blocking/waiting for events.
 
 ## Installation
 
@@ -36,37 +36,55 @@ Here is a basic example that defines and emits events. More detailed usage instr
 ```crystal
 require "event_handler"
 
-# Define an event
+# Define an event named ClickedEvent with two arguments
 EventHandler.event ClickedEvent, x : Int32, y : Int32
+
+class MyClass
+  include EventHandler
+
+  # Define a handler that will run in response to the event
+  def initialize
+
+    # Add a block as event handler
+    on(::ClickedEvent) do |e|
+      puts "Clicked on position x=#{e.x}, y=#{e.y}"
+    end
+  end
+end
+
+# Trigger the event on the object:
+my = MyClass.new
+my.emit ClickedEvent, 10, 20 #=> "Clicked on position x=10, y=20"
+```
+
+Or another example:
+
+```
+require "event_handler"
 
 # Define an event inside a namespace
 class MyClass
   include EventHandler
   event TestEvent, message : String, status : Bool
 end
-my = MyClass.new
 
-# Add a block as event handler
-my.on(ClickedEvent) do |e|
-  puts "Clicked on position x=#{e.x}, y=#{e.y}"
-end
+my = MyClass.new
 
 # Add a Proc as event handler
 handler = ->(e : MyClass::TestEvent) do
   puts "Activated on #{e.class}. Message is '#{e.message}' and status is #{e.status}"
-  nil
 end
 my.on MyClass::TestEvent, handler
 
-# Emit events
-my.emit ClickedEvent, 10, 20
+# Emit the event
 my.emit MyClass::TestEvent, "Hello, World!", true
+#=> Activated on MyClass::TestEvent. Message is 'Hello, World!' and status is true
 
-# Remove handler
+# Remove the handler
 my.off MyClass::TestEvent, handler
 
-# Remove all handlers at once
-my.off ClickedEvent
+# Or remove all handlers for an event at once
+my.off MyClass::TestEvent
 ```
 
 ## Documentation
@@ -229,7 +247,7 @@ my.on ClickedEvent, wrapper
 ```
 
 Using a variation of the last example, where wrapper object is obtained from a call
-to `on()` and then reused to add the handler the second time:
+to `on()` and then reused to add the same handler the second time:
 
 ```crystal
 my = MyClass.new
@@ -279,14 +297,14 @@ my.once ClickedEvent, handler, async: true, at: -1
 ```
 
 `async` specifies whether a handler should run synchronously or asynchronously. If
-no specific value is provided, global default from `EventEmitter.async` is used.
-Default (`EventEmitter.async?`) is false. You can either modify this default,
+no specific value is provided, global default from `EventHandler.async` is used.
+Default (`EventHandler.async?`) is false. You can either modify this default,
 or specify `async` on a per-`on` basis.
 
 `at` specifies the index in the list of handlers where new handler should be inserted.
 While it is possible to specify the exact position, usually this value is
-`0` (`EventEmitter.at_beginning`) to insert at the beginning or `-1` (`EventEmitter.at_end`)
-to insert at the end of list. Default is `EventEmitter.at_end`.
+`0` (`EventHandler.at_beginning`) to insert at the beginning or `-1` (`EventHandler.at_end`)
+to insert at the end of list. Default is `EventHandler.at_end`.
 
 ### Emitting events
 
@@ -342,29 +360,8 @@ my.on ClickedEvent do |e|
 end
 ```
 
-There are two cases where an explicit `nil` is required to satisfy the
-type restriction:
-
-At the end of Procs defined with *->(){}* syntax:
-
-```crystal
-handler = ->(e : ClickedEvent) do
-  p "Hello"
-  nil
-end
-```
-
-At the end of methods without explicit return type:
-
-```crystal
-def on_clicked(e : ClickedEvent)
-  p "Hello"
-  nil
-end
-```
-
 If event handlers should produce a return value, the recommended way
-is to subclass Event into one that contains a return value, and which
+is to subclass Event into one that contains a return value, which
 the handlers will update:
 
 ```crystal
@@ -384,13 +381,13 @@ c = MyClass.new
 c.on(ClickedEvent) { |e| e.return_value += e.x + e.y }
 
 event = c.emit ClickedEvent, 1,2
-p event.return_value # => 3
+p event.return_value #=> 3
 
 c.emit ClickedEvent, event
-p event.return_value # => 6
+p event.return_value #=> 6
 
 c.emit event
-p event.return_value # => 9
+p event.return_value #=> 9
 ```
 
 Please note the above example will work correctly as long as event handlers are
@@ -457,18 +454,20 @@ Internally, handlers are always removed from events by removing their wrapper
 object.
 
 When wrappers are created implicitly by `on`, each invocation of `on`
-gives handler a new wrapper object even if it is added multiple times for
-the same event. A call to
-`off()` will find the first wrapper instance of this handler
-and remove it from the list.
-If a handler is added to an event more than once, it is necessary to call
-`off()` multiple times to remove all instances.
+gives handler a new wrapper object even if the same handler is added multiple
+times for the same event. A call to
+`off()` will find the first instance of this handler, then remove all
+instances of its wrapper from the list (there will be only one), and then
+`RemoveHandlerEvent` will be invoked with that instance as argument.
+If a handler is added to an event more than once via any method that does not
+involve directly adding a handler, it will be necessary to call `off()`
+multiple times to remove all instances.
 
-When handlers are added by using their wrappers directly, adding a handler multiple
-times results in multiple identical wrapper objects present in the list.
-When `off()` is used to remove such handlers, all identical wrapper instances
-are removed at once and `RemoveHandlerEvent` is invoked with the last
-removed instance as argument.
+When handlers are added by using their wrappers directly, multiple identical
+wrapper objects will be present in the list.
+When `off()` is used to remove such handlers, all instances of their wrapper
+will be removed from the list (there will be more than one) and `RemoveHandlerEvent`
+will be invoked with the last removed instance as argument.
 
 Whether `off(Event, handler | hash)` should be removing handlers by
 wrapper (like it does now) or by handler, and whether `off()` should remove
@@ -487,15 +486,16 @@ By removing all handlers at once:
 my.off ClickedEvent
 
 # With remove_all_handlers
-my.remove_all_handlers ClickedEvent, emit: false
+my.remove_all_handlers ClickedEvent
 ```
 
 When all handlers are removed at once, `RemoveHandlerEvent`s will be emitted as
-expected, and multiple identical wrappers will be removed according to the
+expected, and any multiple identical wrappers will be removed according to the
 above-documented behavior.
 If emitting `RemoveHandlerEvent` events should be disabled when removing all handlers,
-provide argument *emit* or use `EventEmitter.emit_on_remove_all?` and
-`EventEmitter.emit_on_remove_all=` to change the default value.
+provide argument *emit* to `off` or `remove_all_handlers`, or use
+`EventHandler.emit_on_remove_all?` and `EventHandler.emit_on_remove_all=`
+to change the default behavior.
 
 ### Meta Events
 
@@ -511,7 +511,7 @@ As mentioned, a wrapper object is implicitly created around a handler on every `
 subscription options (the values of `once?`, `async?`, and `at`).
 When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the
 handlers' `Wrapper` object as argument.
-This allows listeners on these two meta events full insight into the added or removed handlers and their settings.
+This allows listeners on these two meta events full insight into the added or removed handlers and their subscription settings.
 
 ### Channels
 
@@ -688,69 +688,7 @@ my = My.new
 
 4.times { my.emit ClickedEvent, 1, 2 }
 
-p ClickedEvent.count # => 4
-```
-
-### Custom behavior
-
-The behavior of events can be modified in many ways.
-
-Here is an example which, based on a single event definition, creates three events
-and emits all three when the main event is emitted:
-
-```crystal
-require "event_handler"
-
-macro extended_event(e, *args)
-  # Regular event definition as with the standard `event()` macro
-  class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
-
-  # Subclassed event definition. It accepts same arguments as parent event
-  class {{e.id}}::Subclass < {{e.id}}; end
-
-  # Related event definition. Its signature is different; it accepts the
-  # complete main event as argument
-  class_record {{e.id}}::Related < ::EventHandler::Event, event : {{e.id}}
-
-  # A way for the main event to retrieve its subclassed event class
-  def {{e.id}}.subclass; {{e.id}}::Subclass end
-
-  # A way for the main event to retrieve its related event class
-  def {{e.id}}.related; {{e.id}}::Related end
-end
-
-# Define the main event. Based on the above, it automatically creates
-# ClickedEvent, ClickedEvent::Subclass, and ClickedEvent::Related.
-extended_event ClickedEvent, x : Int32, y : Int32
-
-class My
-  include EventHandler
-
-  def initialize
-    # Install event handlers
-    on(ClickedEvent)           {|e| p e }
-    on(ClickedEvent::Subclass) {|e| p e }
-    on(ClickedEvent::Related)  {|e| p e }
-  end
-
-  # Override emit() to insert custom logic
-  def emit(type, obj : EventHandler::Event)
-    _emit EventHandler::AnyEvent, obj
-
-    _emit type, obj
-    _emit type.subclass, obj
-    _emit type.related, obj
-
-    nil
-  end
-end
-my = My.new
-
-my.emit ClickedEvent, 1, 2
-
-#<ClickedEvent:0x7fca444d5eb0 @x=1, @y=2>
-#<ClickedEvent:0x7fca444d5eb0 @x=1, @y=2>
-#<ClickedEvent::Related:0x7fca444d4b80 @event=#<ClickedEvent:0x7fca444d5eb0 @x=1, @y=2>>
+p ClickedEvent.count #=> 4
 ```
 
 ## API documentation

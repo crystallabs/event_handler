@@ -13,7 +13,7 @@ c = MyClass.new
 
 c.on(ClickedEvent) { |e| p "Clicked (handler 1). Coordinates are x=#{e.x} y=#{e.y}"}
 
-handler = ->(e : ClickedEvent) { p "Clicked (handler 2). Coordinates are x=#{e.x} y=#{e.y}"; nil }
+handler = ->(e : ClickedEvent) { p "Clicked (handler 2). Coordinates are x=#{e.x} y=#{e.y}" }
 c.on ClickedEvent, handler
 
 handler = ClickedEvent::Handler.new { |e| p "Clicked (handler 3). Coordinates are x=#{e.x} y=#{e.y}" }
@@ -23,7 +23,6 @@ c.on ClickedEvent, handler
 c.emit ClickedEvent, 1, 2
 
 hnd = ->(e : ClickedEvent) do
-  nil
 end
 wrapper = EventHandler::Wrapper.new(handler: handler, once: false, async: false, at: -1)
 

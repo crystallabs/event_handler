@@ -12,7 +12,6 @@ my.on(::EventHandler::AddHandlerEvent){|e| p "Event details are: ", e }
 my.on(ClickedEvent) { |e| true }
 
 myhandler = ->(e : ClickedEvent) do
-  nil
 end
 wrapper = ::EventHandler::Wrapper.new(handler: myhandler, once: false, async: false, at: -1)
 

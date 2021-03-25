@@ -11,7 +11,6 @@ class MyClass
 
   def on_clicked2(e : ClickedEvent)
     p :clicked, self
-    nil
   end
 end
 my = MyClass.new

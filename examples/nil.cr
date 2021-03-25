@@ -7,7 +7,7 @@ class MyClass
 end
 c = MyClass.new
 
-handler = ->(e : ClickedEvent) { p e; nil }
+handler = ->(e : ClickedEvent) { p e }
 c.on ClickedEvent, handler
 
 handler = Proc(ClickedEvent, Nil).new { |e| p e }
