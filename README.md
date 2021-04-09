@@ -723,3 +723,8 @@ List of interesting or similar projects in no particular order:
 - https://github.com/firejox/CrSignals - Signals/slots notification library in Crystal
 
 - https://github.com/crystal-community/future.cr - Provides delay, future, and lazy convenient methods
+
+## Licensing
+
+For licensing to use in your next project, consider
+https://perens.com/2020/10/06/post-open-source-license-early-draft/ and https://licenseuse.org/.
