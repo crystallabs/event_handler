@@ -702,7 +702,7 @@ Also, see examples in the directory `examples/`.
 
 ## Thanks
 
-* All the fine folks on FreeNode IRC channel #crystal-lang and on Crystal's Gitter channel https://gitter.im/crystal-lang/crystal
+* All the fine folks on Libera.Chat IRC channel #crystal-lang and on Crystal's Gitter channel https://gitter.im/crystal-lang/crystal
 
 * Blacksmoke16 for a workable event model design
 
