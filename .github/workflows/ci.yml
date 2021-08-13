@@ -34,4 +34,4 @@ jobs:
       - name: Build binaries
         run: |
           shards update --production --release --static --no-debug --ignore-crystal-version
-          crystal build --time --release --static --no-debug -o bin/events examples/events.cr
+          crystal build --time --release --static --no-debug -o examples/events examples/events.cr
