@@ -3,8 +3,9 @@ require "../src/event_handler"
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 class MyClass
-	include ::EventHandler
+  include ::EventHandler
 end
+
 c = MyClass.new
 
 handler = ->(e : ClickedEvent) { p e }
@@ -20,4 +21,4 @@ c.on(ClickedEvent) { |e|
   p e
 }
 
-c.emit ClickedEvent, 1,2
+c.emit ClickedEvent, 1, 2

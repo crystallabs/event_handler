@@ -18,9 +18,9 @@ class My
   include EventHandler
 
   def initialize
-    on(ClickedEvent)           {|e| p e }
-    on(ClickedEvent::Subclass) {|e| p e }
-    on(ClickedEvent::Related)  {|e| p e }
+    on(ClickedEvent) { |e| p e }
+    on(ClickedEvent::Subclass) { |e| p e }
+    on(ClickedEvent::Related) { |e| p e }
   end
 
   def emit(type, obj : EventHandler::Event)
@@ -29,9 +29,9 @@ class My
     _emit type, obj
     _emit type.subclass, obj
     _emit type.related, obj
-
   end
 end
+
 my = My.new
 
 my.emit ClickedEvent, 1, 2

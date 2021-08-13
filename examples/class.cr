@@ -13,6 +13,7 @@ class MyClass
     p :clicked, self
   end
 end
+
 my = MyClass.new
 
 my.on MyClass::ClickedEvent, ->my.on_clicked(MyClass::ClickedEvent)

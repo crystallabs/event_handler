@@ -3,8 +3,9 @@ require "../src/event_handler"
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 class MyClass
-	include ::EventHandler
+  include ::EventHandler
 end
+
 c = MyClass.new
 
 c.on(ClickedEvent) { |e| p "Clicked (handler 1). Coordinates are x=#{e.x} y=#{e.y}" }

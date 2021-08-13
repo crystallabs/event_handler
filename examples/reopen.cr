@@ -1,7 +1,7 @@
 require "../src/event_handler"
 
-
 EventHandler.event ClickedEvent, x : Int32, y : Int32
+
 class ClickedEvent < ::EventHandler::Event
   property test : String? = "it works"
 end
@@ -13,8 +13,8 @@ end
 x = X.new
 
 x.on(ClickedEvent) { |e|
-    p "Clicked, value of test is '#{e.test}'"
-    true
-  }
+  p "Clicked, value of test is '#{e.test}'"
+  true
+}
 
-x.emit(ClickedEvent,1,2)
+x.emit(ClickedEvent, 1, 2)

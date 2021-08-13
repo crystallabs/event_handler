@@ -22,11 +22,12 @@ class My
   include EventHandler
 
   def initialize
-    on(ClickedEvent)       {|e| e.return_value  = 1 }
-    on(DoubleClickedEvent) {|e| e.return_value  = 2 }
-    on(TripleClickedEvent) {|e| e.return_value += 3 }
+    on(ClickedEvent) { |e| e.return_value = 1 }
+    on(DoubleClickedEvent) { |e| e.return_value = 2 }
+    on(TripleClickedEvent) { |e| e.return_value += 3 }
   end
 end
+
 my = My.new
 
 p my.emit(ClickedEvent, 1, 2).return_value # => 1

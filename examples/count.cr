@@ -11,12 +11,16 @@ end
 class ClickedEvent < EventWithCount
   getter x : Int32
   getter y : Int32
+
   def initialize(@x, @y)
     super()
   end
 end
 
-class My; include EventHandler end
+class My
+  include EventHandler
+end
+
 my = My.new
 
 20.times { my.emit ClickedEvent, 1, 2 }

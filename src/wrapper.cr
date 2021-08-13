@@ -12,11 +12,11 @@ module EventHandler
   # values of 0 or -1, indicating the handler's insertion at the beginning or end of
   # list respectively.
   class Wrapper(T)
-    getter  handler : T
-    getter  handler_hash : UInt64
+    getter handler : T
+    getter handler_hash : UInt64
     getter? once : Bool
     getter? async : Bool
-    getter  at : Int32
+    getter at : Int32
 
     def initialize(@handler : T, @once = false, @async = ::EventHandler.async?, @at = ::EventHandler.at_end, hash = nil)
       @handler_hash = hash || @handler.hash
@@ -26,10 +26,12 @@ module EventHandler
       initialize handler, once, async, at, hash
     end
 
-    def call(obj, async=nil)
+    def call(obj, async = nil)
       async = @async if async.nil?
       if async
-        spawn do @handler.call obj end
+        spawn do
+          @handler.call obj
+        end
         nil
       else
         @handler.call obj

@@ -3,7 +3,6 @@ require "./spec_helper"
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 module EventHandler
-
   class TestRemove
     include ::EventHandler
   end

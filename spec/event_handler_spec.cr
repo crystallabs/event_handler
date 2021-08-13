@@ -5,7 +5,6 @@ EventHandler.event ClickedEvent, x : Int32, y : Int32
 class DoubleClickedEvent < ClickedEvent; end
 
 module EventHandler
-
   class TestEvents
     include ::EventHandler
   end
@@ -18,24 +17,24 @@ module EventHandler
     it "works for builtin events" do
       count = 0
       c = TestEvents.new
-      c.on(AddHandlerEvent){|e| count += 1}
+      c.on(AddHandlerEvent) { |e| count += 1 }
       count.should eq 1
 
       c.handlers(AddHandlerEvent).size.should eq 1
 
-      h1 = ->(e : AddHandlerEvent) { count += 1; nil}
+      h1 = ->(e : AddHandlerEvent) { count += 1; nil }
       c.on AddHandlerEvent, h1
       count.should eq 3
 
       c.handlers(AddHandlerEvent).size.should eq 2
 
-      h2 = AddHandlerEvent::Handler.new { count += 1}
+      h2 = AddHandlerEvent::Handler.new { count += 1 }
       c.on AddHandlerEvent, h2
       count.should eq 6
 
       c.handlers(AddHandlerEvent).size.should eq 3
 
-      c.on(RemoveHandlerEvent){|e| count -= 1}
+      c.on(RemoveHandlerEvent) { |e| count -= 1 }
       count.should eq 9
 
       c.handlers(RemoveHandlerEvent).size.should eq 1
@@ -61,15 +60,15 @@ module EventHandler
     it "works for custom events" do
       count = 0
       c = TestEvents.new
-      c.on(ClickedEvent){|e| count += 1; e.x; e.y; true}
+      c.on(ClickedEvent) { |e| count += 1; e.x; e.y; true }
       count.should eq 0
 
-      clicked = ClickedEvent.new 1,1
+      clicked = ClickedEvent.new 1, 1
       c.emit clicked
       count.should eq 1
 
-      c.emit ClickedEvent, 1,1
-      c.emit ClickedEvent, ClickedEvent.new 1,1
+      c.emit ClickedEvent, 1, 1
+      c.emit ClickedEvent, ClickedEvent.new 1, 1
       count.should eq 3
 
       c.remove_all_handlers(ClickedEvent)
@@ -79,11 +78,11 @@ module EventHandler
     it "works with subclasses" do
       count = 0
       c = TestEvents.new
-      c.on(ClickedEvent){|e| count += e.x + e.y; true}
-      c.on(DoubleClickedEvent){|e| count += e.x + e.y; true}
+      c.on(ClickedEvent) { |e| count += e.x + e.y; true }
+      c.on(DoubleClickedEvent) { |e| count += e.x + e.y; true }
 
-      c.emit ClickedEvent, 1,1
-      c.emit DoubleClickedEvent, 1,1
+      c.emit ClickedEvent, 1, 1
+      c.emit DoubleClickedEvent, 1, 1
 
       count.should eq 4
     end
@@ -92,7 +91,9 @@ module EventHandler
       c = TestEvents.new
       ch = ClickedEvent::Channel.new
       c.on ClickedEvent, ch
-      spawn do c.emit ClickedEvent, 1, 2 end
+      spawn do
+        c.emit ClickedEvent, 1, 2
+      end
       ch.receive.class.should eq ClickedEvent
       c.remove_all_handlers ClickedEvent
 
@@ -103,10 +104,10 @@ module EventHandler
         c.wait(ClickedEvent).class.should eq ClickedEvent
       end
       spawn do
-        c.wait(ClickedEvent) { |e| e.class.should eq ClickedEvent; e.x; e.y; true}
+        c.wait(ClickedEvent) { |e| e.class.should eq ClickedEvent; e.x; e.y; true }
       end
       spawn do
-        c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; nil})
+        c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; nil })
       end
 
       sleep 0.5
@@ -118,7 +119,7 @@ module EventHandler
 
       spawn do
         loop do
-          c.emit(ClickedEvent, 1,2)
+          c.emit(ClickedEvent, 1, 2)
           Fiber.yield
         end
       end
@@ -136,15 +137,15 @@ module EventHandler
       count = 0
       c = TestEvents.new
 
-      c.on(ClickedEvent){|e| e.x; e.y; true}
-      c.on(::EventHandler::AnyEvent){|e|
-      count += 1;
-      x = e.event
-      if x.is_a? ClickedEvent
-        x.x
-      end
+      c.on(ClickedEvent) { |e| e.x; e.y; true }
+      c.on(::EventHandler::AnyEvent) { |e|
+        count += 1
+        x = e.event
+        if x.is_a? ClickedEvent
+          x.x
+        end
       }
-      c.emit ClickedEvent, 1,1
+      c.emit ClickedEvent, 1, 1
       count.should eq 1
     end
 

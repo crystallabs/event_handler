@@ -8,6 +8,7 @@ class MyClass
   include EventHandler
   event ClickedEvent, x : Int32, y : Int32
 end
+
 my = MyClass.new
 
 # Add a block as event handler

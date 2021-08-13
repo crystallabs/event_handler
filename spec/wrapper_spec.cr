@@ -3,7 +3,6 @@ require "./spec_helper"
 EventHandler.event ClickedEvent, x : Int32, y : Int32
 
 module EventHandler
-
   class TestWrapper
     include ::EventHandler
   end
@@ -24,7 +23,7 @@ module EventHandler
       wrapper = ::EventHandler::Wrapper.new(handler)
       c.on ClickedEvent, wrapper
 
-      wrapper = ::EventHandler::Wrapper(Proc(ClickedEvent,Nil)).new() { |x|
+      wrapper = ::EventHandler::Wrapper(Proc(ClickedEvent, Nil)).new() { |x|
         count += 1
         true
       }
@@ -36,10 +35,9 @@ module EventHandler
       }
       c.on ClickedEvent, wrapper
 
-      c.emit ClickedEvent,1,2
+      c.emit ClickedEvent, 1, 2
 
       count.should eq 5
     end
-
   end
 end

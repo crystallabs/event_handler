@@ -7,13 +7,14 @@ class ClickedEvent < EventHandler::Event
 end
 
 class MyClass
-	include ::EventHandler
+  include ::EventHandler
 end
+
 c = MyClass.new
 
 c.on(ClickedEvent) { |e| e.return_value += e.x + e.y }
 
-event = c.emit ClickedEvent, 1,2
+event = c.emit ClickedEvent, 1, 2
 p event.return_value # => 3
 
 c.emit ClickedEvent, event

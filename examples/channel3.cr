@@ -5,11 +5,12 @@ EventHandler.event ClickedEvent, x : Int32, y : Int32
 class My
   include EventHandler
 end
+
 my = My.new
 
 spawn do
   loop do
-    my.emit(ClickedEvent, 1,2)
+    my.emit(ClickedEvent, 1, 2)
     sleep 0.2
   end
 end

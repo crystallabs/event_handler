@@ -8,6 +8,7 @@ module EventHandler
   #
   # ```
   # event ClickedEvent, x : Int32, y : Int32
+  #
   # class ClickedEvent < ::EventHandler::Event
   #   property test : String
   # end
@@ -20,6 +21,7 @@ module EventHandler
   #   getter x : Int32
   #   getter y : Int32
   #   property test : String
+  #
   #   def initialize(@x, @y)
   #   end
   # end
