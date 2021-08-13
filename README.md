@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/crystallabs/event_handler.svg?branch=master)](https://travis-ci.com/crystallabs/event_handler)
+[![Linux CI](https://github.com/crystallabs/event_handler/workflows/Linux%20CI/badge.svg)](https://github.com/crystallabs/event_handler/actions?query=workflow%3A%22Linux+CI%22+event%3Apush+branch%3Amaster)
 [![Version](https://img.shields.io/github/tag/crystallabs/event_handler.svg?maxAge=360)](https://github.com/crystallabs/event_handler/releases/latest)
 [![License](https://img.shields.io/github/license/crystallabs/event_handler.svg)](https://github.com/crystallabs/event_handler/blob/master/LICENSE)
 
