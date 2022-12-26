@@ -88,7 +88,7 @@ module EventHandler
   macro finished
     \{% begin %}
       \{% for e in ::EventHandler::Event.all_subclasses %}
-        \{% handlers_list = "_event_" + e.name.identify.underscore.tr("()","__").stringify %}
+        \{% handlers_list = "_event_" + e.name.identify.underscore.tr("()", "__").stringify %}
         \{% event_class = e.name.split('(').first.id %}
 
         private getter \{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
@@ -100,7 +100,7 @@ module EventHandler
           _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
 
           # Or this:
-          #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as \ { {e.id}} end
+          #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as \\ { {e.id}} end
           #wrapper2 = ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
           #_emit ::EventHandler::AddHandlerEvent, type, wrapper2
 
@@ -188,7 +188,7 @@ module EventHandler
             _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
 
             # Or this:
-            #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as \ { {e.id}} end
+            #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as \\ { {e.id}} end
             #wrapper2 = ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
             #_emit ::EventHandler::RemoveHandlerEvent, type, wrapper2
 
