@@ -110,9 +110,9 @@ module EventHandler
         c.wait(ClickedEvent, ->(e : ClickedEvent) { e.class.should eq ClickedEvent; nil })
       end
 
-      sleep 0.5
+      sleep 0.5.seconds
       c.emit ClickedEvent, 1, 2
-      sleep 0.5
+      sleep 0.5.seconds
 
       c.remove_all_handlers ClickedEvent
       count = 0
@@ -124,7 +124,7 @@ module EventHandler
         end
       end
 
-      sleep 0.5
+      sleep 0.5.seconds
 
       10.times do |i|
         c.wait(ClickedEvent) { |e| count += i; e.x; e.y; true }

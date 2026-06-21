@@ -22,16 +22,16 @@ macro class_record(name, *properties)
     {% end %}
 
     def initialize({{
-                     *properties.map do |field|
+                     properties.map do |field|
                        "@#{field.id}".id
-                     end
+                     end.splat
                    }})
     end
 
     {{yield}}
 
     def copy_with({{
-                    *properties.map do |property|
+                    properties.map do |property|
                       if property.is_a?(Assign)
                         "#{property.target.id} _#{property.target.id} = @#{property.target.id}".id
                       elsif property.is_a?(TypeDeclaration)
@@ -39,10 +39,10 @@ macro class_record(name, *properties)
                       else
                         "#{property.id} _#{property.id} = @#{property.id}".id
                       end
-                    end
+                    end.splat
                   }})
       self.class.new({{
-                       *properties.map do |property|
+                       properties.map do |property|
                          if property.is_a?(Assign)
                            "_#{property.target.id}".id
                          elsif property.is_a?(TypeDeclaration)
@@ -50,13 +50,13 @@ macro class_record(name, *properties)
                          else
                            "_#{property.id}".id
                          end
-                       end
+                       end.splat
                      }})
     end
 
     def clone
       self.class.new({{
-                       *properties.map do |property|
+                       properties.map do |property|
                          if property.is_a?(Assign)
                            "@#{property.target.id}.clone".id
                          elsif property.is_a?(TypeDeclaration)
@@ -64,7 +64,7 @@ macro class_record(name, *properties)
                          else
                            "@#{property.id}.clone".id
                          end
-                       end
+                       end.splat
                      }})
     end
   end
@@ -80,7 +80,7 @@ module EventHandler
   # event MouseClick, x : ::Int32, y : ::Int32
   # ```
   macro event(e, *args)
-    class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
+    class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ args.splat }}{% end %}
   end
 
   # :nodoc:
@@ -94,7 +94,9 @@ module EventHandler
         private getter \{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
 
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          \{{handlers_list.id}}.insert wrapper.at, wrapper
+          _event_handler_mutex.synchronize do
+            \{{handlers_list.id}}.insert wrapper.at, wrapper
+          end
 
           # Use this:
           _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
@@ -170,19 +172,21 @@ module EventHandler
 
         # Removes *handler* from list of handlers for event *type*.
         def off(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil))
-          if wrapper = \{{handlers_list.id}}.find {|h| h.handler == handler }
+          wrapper = _event_handler_mutex.synchronize { \{{handlers_list.id}}.find {|h| h.handler == handler } }
+          if wrapper
             off type, wrapper
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, hash : ::UInt64)
-          if wrapper = \{{handlers_list.id}}.find {|h| h.handler_hash == hash }
+          wrapper = _event_handler_mutex.synchronize { \{{handlers_list.id}}.find {|h| h.handler_hash == hash } }
+          if wrapper
             off type, wrapper
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          if w = \{{handlers_list.id}}.delete wrapper
+          if w = _event_handler_mutex.synchronize { \{{handlers_list.id}}.delete wrapper }
 
             # Use this:
             _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
@@ -197,7 +201,7 @@ module EventHandler
         end
         # :ditto:
         def off(type : \{{event_class}}.class, at : ::Int)
-          off type, \{{handlers_list.id}}[at]
+          off type, _event_handler_mutex.synchronize { \{{handlers_list.id}}[at] }
         end
 
         # Removes all handlers for event *type*.
@@ -208,12 +212,12 @@ module EventHandler
         # See README for detailed description of this behavior.
         def remove_all_handlers(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
           if emit
-            wrappers = \{{handlers_list.id}}.dup.uniq
+            wrappers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup.uniq }
             wrappers.each do |w|
               off type, w
             end
           else
-            \{{handlers_list.id}}.clear
+            _event_handler_mutex.synchronize { \{{handlers_list.id}}.clear }
           end
           true
         end
@@ -230,9 +234,23 @@ module EventHandler
         # Low-level function used to execute handlers and almost nothing else.
         # Regular users should use `#emit` instead.
         protected def _emit(type : \{{event_class}}.class, event : \{{event_class}}, async : ::Bool? = nil)
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            # Fast path: with nothing subscribed to this type there is no snapshot
+            # to take and no handler to call, so skip the mutex lock and the
+            # otherwise-per-emit `dup` allocation entirely. See
+            # `EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS`.
+            return event if \{{handlers_list.id}}.empty?
+          \{% end %}
+
+          # Take a snapshot of the handler list under the lock, then invoke the
+          # handlers *outside* the lock. Handlers may call `on`/`off`/`emit` or
+          # block on a `Channel`, so holding the lock during invocation would
+          # deadlock.
+          handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
+
           # This loop invokes all registered handlers, and also removes
           # those which were intended to run only once.
-          \{{handlers_list.id}}.dup.each do |handler|
+          handlers.each do |handler|
             handler.call(event, async)
             if handler.once?
               off type, handler
@@ -249,7 +267,22 @@ module EventHandler
         end
 
         # Emits *event* of *type*.
+        #
+        # When `EMIT_SKIP_WHEN_NO_HANDLERS`, `emit` gains a fast path: if neither
+        # this concrete type nor the catch-all `AnyEvent` has any handler, it
+        # returns immediately. It is also `@[AlwaysInline]` so that, in that
+        # (common) no-subscriber case, the guard folds into the caller as two
+        # `@size == 0` comparisons — no call into `_emit`, no lock, no allocation.
+        # When something *is* listening, the two `_emit` calls run as before (each
+        # self-guards, so an empty side is still skipped). With the constant off,
+        # neither the annotation nor the guard is generated and `emit` is verbatim
+        # the original two-line dispatch.
+        \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}@[AlwaysInline]\{% end %}
         def emit(type : \{{event_class}}.class, event : \{{event_class}})
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
+            return event if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
+          \{% end %}
           _emit ::EventHandler::AnyEvent, event
           _emit(type, event)
         end
