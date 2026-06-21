@@ -29,11 +29,21 @@ module EventHandler
     def call(obj, async = nil)
       async = @async if async.nil?
       if async
-        spawn do
-          @handler.call obj
-        end
+        call_async obj
         nil
       else
+        @handler.call obj
+      end
+    end
+
+    # The `spawn` block closes over *obj*, and Crystal heap-allocates that
+    # closure environment on entry to whatever method contains the block —
+    # which, if the `spawn` lived directly in `#call`, would mean an allocation
+    # on *every* call, including the (common) synchronous path that never spawns.
+    # Keeping the closure in its own method confines that allocation to the
+    # async path, leaving synchronous dispatch allocation-free.
+    private def call_async(obj)
+      spawn do
         @handler.call obj
       end
     end

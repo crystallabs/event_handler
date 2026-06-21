@@ -95,16 +95,37 @@ module EventHandler
 
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
           _event_handler_mutex.synchronize do
-            \{{handlers_list.id}}.insert wrapper.at, wrapper
+            \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+              # Copy-on-write: publish a fresh array so any in-flight `_emit`
+              # keeps iterating its captured snapshot. See `EMIT_COPY_ON_WRITE`.
+              updated = \{{handlers_list.id}}.dup
+              updated.insert wrapper.at, wrapper
+              @\{{handlers_list.id}} = updated
+            \{% else %}
+              \{{handlers_list.id}}.insert wrapper.at, wrapper
+            \{% end %}
           end
 
-          # Use this:
-          _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+          # Only build+dispatch the `AddHandlerEvent` when something is listening
+          # for it. The `_emit AddHandlerEvent, ...` path constructs a fresh
+          # `AddHandlerEvent.new(...)` wrapper *before* `_emit` reaches its own
+          # empty-list fast path, so without this guard every `on()` would
+          # allocate — and immediately discard — an `AddHandlerEvent` even when
+          # nobody subscribed to it. Same idea as the `AnyEvent` guard in `emit`.
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            \{% add_handlers_list = "_event_" + ::EventHandler::AddHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
+            unless \{{add_handlers_list.id}}.empty?
+              _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+            end
+          \{% else %}
+            # Use this:
+            _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
 
-          # Or this:
-          #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as { {e.id}} end
-          #wrapper2 = ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
-          #_emit ::EventHandler::AddHandlerEvent, type, wrapper2
+            # Or this:
+            #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as { {e.id}} end
+            #wrapper2 = ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
+            #_emit ::EventHandler::AddHandlerEvent, type, wrapper2
+          \{% end %}
 
           wrapper
         end
@@ -170,32 +191,80 @@ module EventHandler
           channel.receive
         end
 
+        # Emits the `RemoveHandlerEvent` announcing that *w* was removed from the
+        # handlers for *type*. Always called *outside* the handler-list lock, so
+        # a `RemoveHandlerEvent` handler may freely call back into `on`/`off`.
+        private def emit_remove_handler_event(type : \{{event_class}}.class, w : ::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)))
+          # Skip building the `RemoveHandlerEvent` wrapper when nobody listens for
+          # it — `_emit` would otherwise allocate it before its empty-list fast
+          # path. Mirrors the `AddHandlerEvent` guard in `internal_insert`.
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            \{% remove_handlers_list = "_event_" + ::EventHandler::RemoveHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
+            unless \{{remove_handlers_list.id}}.empty?
+              _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+            end
+          \{% else %}
+            _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+          \{% end %}
+        end
+
         # Removes *handler* from list of handlers for event *type*.
         def off(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil))
-          wrapper = _event_handler_mutex.synchronize { \{{handlers_list.id}}.find {|h| h.handler == handler } }
-          if wrapper
-            off type, wrapper
+          # Single pass: locate *and* remove the wrapper under one lock, instead
+          # of a `find` scan followed by a second `off`/`delete` scan (and a
+          # second lock acquisition).
+          w = _event_handler_mutex.synchronize {
+            if found = \{{handlers_list.id}}.find { |h| h.handler == handler }
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                updated = \{{handlers_list.id}}.dup
+                updated.delete found
+                @\{{handlers_list.id}} = updated
+              \{% else %}
+                \{{handlers_list.id}}.delete found
+              \{% end %}
+              found
+            end
+          }
+          if w
+            emit_remove_handler_event type, w
+            w
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, hash : ::UInt64)
-          wrapper = _event_handler_mutex.synchronize { \{{handlers_list.id}}.find {|h| h.handler_hash == hash } }
-          if wrapper
-            off type, wrapper
+          w = _event_handler_mutex.synchronize {
+            if found = \{{handlers_list.id}}.find { |h| h.handler_hash == hash }
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                updated = \{{handlers_list.id}}.dup
+                updated.delete found
+                @\{{handlers_list.id}} = updated
+              \{% else %}
+                \{{handlers_list.id}}.delete found
+              \{% end %}
+              found
+            end
+          }
+          if w
+            emit_remove_handler_event type, w
+            w
           end
         end
         # :ditto:
         def off(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          if w = _event_handler_mutex.synchronize { \{{handlers_list.id}}.delete wrapper }
+          if w = _event_handler_mutex.synchronize {
+                   \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                     # Copy-on-write delete: only publish a fresh array when the
+                     # wrapper was actually present. See `EMIT_COPY_ON_WRITE`.
+                     updated = \{{handlers_list.id}}.dup
+                     deleted = updated.delete wrapper
+                     @\{{handlers_list.id}} = updated if deleted
+                     deleted
+                   \{% else %}
+                     \{{handlers_list.id}}.delete wrapper
+                   \{% end %}
+                 }
 
-            # Use this:
-            _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-
-            # Or this:
-            #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as { {e.id}} end
-            #wrapper2 = ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
-            #_emit ::EventHandler::RemoveHandlerEvent, type, wrapper2
-
+            emit_remove_handler_event type, w
            w
           end
         end
@@ -212,12 +281,34 @@ module EventHandler
         # See README for detailed description of this behavior.
         def remove_all_handlers(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
           if emit
-            wrappers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup.uniq }
-            wrappers.each do |w|
-              off type, w
+            # Snapshot and clear the whole list in a single locked swap, then
+            # emit one `RemoveHandlerEvent` per distinct wrapper. The previous
+            # implementation called `off` once per wrapper, and every `off`
+            # re-locked and rescanned (or, with copy-on-write, re-`dup`ed) the
+            # entire array — O(n²). Clearing once is O(n).
+            removed = _event_handler_mutex.synchronize {
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                snapshot = \{{handlers_list.id}}
+                @\{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
+              \{% else %}
+                snapshot = \{{handlers_list.id}}.dup
+                \{{handlers_list.id}}.clear
+              \{% end %}
+              snapshot
+            }
+            removed.uniq.each do |w|
+              emit_remove_handler_event type, w
             end
           else
-            _event_handler_mutex.synchronize { \{{handlers_list.id}}.clear }
+            _event_handler_mutex.synchronize {
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                # Copy-on-write clear: publish a fresh empty array rather than
+                # emptying one a concurrent emit may be iterating.
+                @\{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
+              \{% else %}
+                \{{handlers_list.id}}.clear
+              \{% end %}
+            }
           end
           true
         end
@@ -246,7 +337,15 @@ module EventHandler
           # handlers *outside* the lock. Handlers may call `on`/`off`/`emit` or
           # block on a `Channel`, so holding the lock during invocation would
           # deadlock.
-          handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
+          \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+            # With copy-on-write lists the array is never mutated in place, so the
+            # snapshot is just the current reference — no per-emit `dup`. A
+            # concurrent mutation publishes a *new* array, leaving the one we
+            # captured untouched. See `EventHandler::EMIT_COPY_ON_WRITE`.
+            handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}} }
+          \{% else %}
+            handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
+          \{% end %}
 
           # This loop invokes all registered handlers, and also removes
           # those which were intended to run only once.
@@ -282,8 +381,19 @@ module EventHandler
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
             \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
             return event if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
+
+            # Only dispatch to `AnyEvent` when something is actually listening
+            # for it. The `_emit ::EventHandler::AnyEvent, event` call wraps the
+            # event in a freshly-allocated `AnyEvent.new(event)` *before* `_emit`
+            # reaches its own empty-list fast path, so without this guard every
+            # emit that has concrete-type handlers but no `AnyEvent` listener (the
+            # common case) would allocate — and immediately discard — an
+            # `AnyEvent` wrapper. Guarding here keeps that allocation off the hot
+            # path. When an `AnyEvent` handler exists, behavior is unchanged.
+            _emit ::EventHandler::AnyEvent, event unless \{{any_handlers_list.id}}.empty?
+          \{% else %}
+            _emit ::EventHandler::AnyEvent, event
           \{% end %}
-          _emit ::EventHandler::AnyEvent, event
           _emit(type, event)
         end
         # :ditto:

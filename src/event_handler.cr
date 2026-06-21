@@ -20,6 +20,30 @@ module EventHandler
   # the guard generates no code at all and `emit` keeps its original shape.
   EMIT_SKIP_WHEN_NO_HANDLERS = true
 
+  # Compile-time switch for copy-on-write handler lists.
+  #
+  # When `true` (default), the per-type handler array is treated as immutable:
+  # `on`/`off`/`remove_all_handlers` build a fresh array (copying once at
+  # mutation time) and swap it into place under the lock, rather than mutating
+  # the shared array in place. This lets `_emit` take its handler-list snapshot
+  # by simply *reading the reference* instead of `dup`ing the whole array on
+  # every single emit. Since emits typically vastly outnumber subscription
+  # changes, this moves the array copy off the hot path: the per-emit allocation
+  # (the array `dup`) disappears, replaced by a copy only when handlers are
+  # actually added or removed.
+  #
+  # Correctness is preserved because no array is ever mutated in place while a
+  # concurrent (or reentrant) `_emit` might be iterating it: a writer always
+  # publishes a brand-new array, and an in-flight emit keeps iterating the
+  # snapshot it captured — exactly the semantics the previous `dup` provided.
+  # This relies on pointer-sized reference assignment being atomic (true on all
+  # supported targets), the same benign-race assumption the empty-list fast path
+  # already makes.
+  #
+  # Set to `false` to restore the original in-place mutation + per-emit `dup`
+  # behavior verbatim; when disabled the copy-on-write code is not generated.
+  EMIT_COPY_ON_WRITE = true
+
   @_event_handler_mutex = ::Mutex.new(:reentrant)
   private getter _event_handler_mutex
 
