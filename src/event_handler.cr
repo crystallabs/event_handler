@@ -32,13 +32,20 @@ module EventHandler
   # (the array `dup`) disappears, replaced by a copy only when handlers are
   # actually added or removed.
   #
+  # Because the captured array is never mutated, `_emit` reads its snapshot
+  # **without taking the lock at all** — the read is a single atomic pointer
+  # load. The mutex is then needed only to serialize *writers* against one
+  # another (their dup→mutate→swap is a read-modify-write that would otherwise
+  # lose updates), not to guard the emit read path.
+  #
   # Correctness is preserved because no array is ever mutated in place while a
   # concurrent (or reentrant) `_emit` might be iterating it: a writer always
   # publishes a brand-new array, and an in-flight emit keeps iterating the
   # snapshot it captured — exactly the semantics the previous `dup` provided.
   # This relies on pointer-sized reference assignment being atomic (true on all
   # supported targets), the same benign-race assumption the empty-list fast path
-  # already makes.
+  # already makes; on the single-threaded fiber scheduler writers never yield
+  # mid-swap, and under multi-threading it holds on strongly-ordered targets.
   #
   # Set to `false` to restore the original in-place mutation + per-emit `dup`
   # behavior verbatim; when disabled the copy-on-write code is not generated.

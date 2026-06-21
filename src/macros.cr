@@ -333,16 +333,25 @@ module EventHandler
             return event if \{{handlers_list.id}}.empty?
           \{% end %}
 
-          # Take a snapshot of the handler list under the lock, then invoke the
-          # handlers *outside* the lock. Handlers may call `on`/`off`/`emit` or
-          # block on a `Channel`, so holding the lock during invocation would
-          # deadlock.
+          # Take a snapshot of the handler list, then invoke the handlers. Handlers
+          # may call `on`/`off`/`emit` or block on a `Channel`, so the list is
+          # never iterated while a lock is held — that would deadlock.
           \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-            # With copy-on-write lists the array is never mutated in place, so the
-            # snapshot is just the current reference — no per-emit `dup`. A
-            # concurrent mutation publishes a *new* array, leaving the one we
-            # captured untouched. See `EventHandler::EMIT_COPY_ON_WRITE`.
-            handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}} }
+            # Lock-free read. Under copy-on-write the array is never mutated in
+            # place, so capturing the snapshot is a single atomic pointer load —
+            # no lock needed. A concurrent writer publishes a brand-new array
+            # (under the write lock) and swaps the reference; we keep iterating
+            # the array we captured, which no one mutates. The mutex is therefore
+            # only needed to serialize *writers* against each other, not to guard
+            # this read.
+            #
+            # The one assumption is that the writer's reference-publishing store
+            # is visible here. On the single-threaded fiber scheduler this is
+            # trivially true (writers never yield mid-swap); under multi-threading
+            # it holds on strongly-ordered targets (e.g. x86-TSO) and is the same
+            # benign-race assumption the empty-list fast path above already makes.
+            # Flip `EMIT_COPY_ON_WRITE` off to restore the locked, `dup`-based read.
+            handlers = \{{handlers_list.id}}
           \{% else %}
             handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
           \{% end %}
