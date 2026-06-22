@@ -688,6 +688,30 @@ my = My.new
 p ClickedEvent.count #=> 4
 ```
 
+## Compile-time tuning
+
+Two performance optimizations are gated behind compile-time constants, both
+defaulting to `true`. When a constant is `false`, no code is generated for that
+path. To change one, edit its definition in `src/event_handler.cr`:
+
+```crystal
+module EventHandler
+  EMIT_SKIP_WHEN_NO_HANDLERS = true
+  EMIT_COPY_ON_WRITE         = true
+end
+```
+
+`EMIT_SKIP_WHEN_NO_HANDLERS` (default `true`)
+: `emit` returns immediately when an event has no handlers (for its type or the
+catch-all `AnyEvent`), skipping the lock and handler-array allocation. When
+`false`, every emit locks and dispatches unconditionally.
+
+`EMIT_COPY_ON_WRITE` (default `true`)
+: The handler list is immutable: `on`/`off`/`remove_all_handlers` build and swap
+in a fresh array, so `emit` snapshots by reading the reference instead of copying
+the array each time. When `false`, the list is mutated in place and each `emit`
+copies it.
+
 ## API documentation
 
 Run `crystal docs` as usual, then open file `docs/index.html`.
