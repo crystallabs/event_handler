@@ -406,7 +406,24 @@ module EventHandler
           _emit(type, event)
         end
         # :ditto:
+        \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}@[AlwaysInline]\{% end %}
         def emit(type : \{{event_class}}.class, *args)
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
+            # Build the event object only when something is actually listening.
+            # `emit(type, event)` above also early-outs with no handlers, but only
+            # AFTER the object is constructed; the parameterless per-frame emits
+            # (`PreRender`/`Rendered`/`Focus`, fired per widget every frame with
+            # zero listeners in a typical app) would otherwise heap-allocate an
+            # event that is immediately discarded. Guarding *before* `.new` keeps
+            # that allocation off the hot path entirely, and `@[AlwaysInline]`
+            # folds the no-subscriber case into the caller as two `@size == 0`
+            # checks. NOTE: in the no-listener case the splat form now returns
+            # `nil`, so its return type is nilable — callers that need the emitted
+            # object back must use the explicit `emit(event)` form, which always
+            # constructs and returns it.
+            return if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
+          \{% end %}
           event =  \{{event_class}}.new *args
           emit type, event
         end
