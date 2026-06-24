@@ -356,16 +356,41 @@ module EventHandler
             handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
           \{% end %}
 
-          # This loop invokes all registered handlers, and also removes
-          # those which were intended to run only once.
+          # This loop invokes all registered handlers, and also collects
+          # those which were intended to run only once so they can be removed.
+          #
+          # The once-handlers are removed in a *single* batched copy-on-write
+          # pass after the loop, rather than calling `off` once per fired
+          # once-handler. The previous per-handler `off` re-locked the mutex
+          # and (under copy-on-write) re-`dup`ed the entire handler array for
+          # every once-handler — O(k) locks and O(k·n) copying when k of n
+          # handlers fire once. Batching collapses that to one lock and one
+          # array rebuild. `once_fired` stays `nil` (no allocation) in the
+          # common case where no once-handler fires.
+          once_fired = nil
           handlers.each do |handler|
             handler.call(event, async)
             if handler.once?
-              off type, handler
+              (once_fired ||= ::Array(typeof(handler)).new) << handler
             end
-            #handler.once?
           end
-          # (Alternatively, instead of 'each/if once?/off', use 'reject!/once?'
+
+          if once_fired
+            \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+              # One copy-on-write rebuild dropping every fired once-handler.
+              fired = once_fired
+              _event_handler_mutex.synchronize do
+                @\{{handlers_list.id}} = \{{handlers_list.id}}.reject { |h| fired.includes?(h) }
+              end
+            \{% else %}
+              _event_handler_mutex.synchronize do
+                once_fired.each { |h| \{{handlers_list.id}}.delete h }
+              end
+            \{% end %}
+            # Announce each removal outside the lock, preserving the original
+            # one-`RemoveHandlerEvent`-per-removed-handler behavior.
+            once_fired.each { |h| emit_remove_handler_event type, h }
+          end
 
           event
         end
