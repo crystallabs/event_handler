@@ -32,8 +32,8 @@ module EventHandler
       c.on(ClickedEvent, w2)
       c.on(ClickedEvent, w2)
       c.on(ClickedEvent, w2)
-      w3 = c.on(ClickedEvent, handler)
-      w4 = c.on(ClickedEvent, handler)
+      c.on(ClickedEvent, handler)
+      c.on(ClickedEvent, handler)
 
       c.off(ClickedEvent, w1.handler_hash)
 

@@ -24,6 +24,8 @@ jobs:
         run: crystal spec --order=random --error-on-warnings
       - name: Check formatting
         run: crystal tool format --check
+      - name: Run ameba
+        run: ./bin/ameba
   release_linux:
     runs-on: ubuntu-latest
     container:

@@ -1,0 +1,31 @@
+# Ameba configuration — https://github.com/crystal-ameba/ameba
+#
+# Run with: ./bin/ameba   (binary built by `shards install`)
+
+Globs:
+  - "**/*.cr"
+  - "!lib"        # vendored dependencies
+  - "!examples"   # illustrative demo programs: they print results with `p`,
+                  # exercise the `event` DSL, and intentionally leave
+                  # variables/arguments unused — linting them is pure noise.
+
+# The `event`/`class_record` macros take `name : Type` *field declarations*
+# (e.g. `event ClickedEvent, x : Int32`). Ameba's parser misreads these as
+# variable assignments, so every event definition is a false positive.
+Lint/UselessAssign:
+  Excluded:
+    - src/events.cr   # the library's own meta-event definitions
+    - spec/**         # the same DSL is exercised throughout the specs
+
+# Spec handlers print with `p` to make behaviour/failures legible, and bind
+# block arguments they don't always use — both are fine in test code.
+Lint/DebugCalls:
+  Excluded:
+    - spec/**
+Lint/UnusedArgument:
+  Excluded:
+    - spec/**
+
+# TODO/FIXME notes are legitimate planning markers, not lint failures.
+Documentation/DocumentationAdmonition:
+  Enabled: false
