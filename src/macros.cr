@@ -173,12 +173,22 @@ module EventHandler
         end
 
         # Blocks until event *type* is emitted and executes *handler*.
+        #
+        # *handler* may be `nil`, in which case `wait` simply blocks until the
+        # event arrives and returns it without running any handler.
         def wait(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil)?, async = ::EventHandler.async?, at = ::EventHandler.at_end, async_send = ::EventHandler.async_send?)
           channel = ::Channel(\{{event_class}}).new
-          channel_wrapper = once type, channel, async_send, at
-          handler_wrapper = wrapper type, handler, true, async, at
+          once type, channel, async_send, at
           e = channel.receive
-          handler_wrapper.call e
+          # Guard against a nil *handler*: the parameter is explicitly typed as
+          # nilable, but building (and calling) a `wrapper` from a nil proc is a
+          # type error / nil dispatch. When no handler is given, just return the
+          # received event, mirroring the handler-less `wait` overload.
+          if handler
+            wrapper(type, handler, true, async, at).call e
+          else
+            e
+          end
         end
         # :ditto:
         def wait(type : \{{event_class}}.class, async = ::EventHandler.async?, at = ::EventHandler.at_end, async_send = ::EventHandler.async_send?, &handler : \{{event_class}} -> ::Nil)

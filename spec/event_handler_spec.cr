@@ -133,6 +133,19 @@ module EventHandler
       count.should eq 45
     end
 
+    it "waits with a nil handler and returns the emitted event" do
+      c = TestEvents.new
+      result = nil
+      spawn do
+        result = c.wait(ClickedEvent, nil)
+      end
+      sleep 0.1.seconds
+      c.emit ClickedEvent, 3, 4
+      sleep 0.1.seconds
+      result.class.should eq ClickedEvent
+      result.as(ClickedEvent).x.should eq 3
+    end
+
     it "emits AnyEvents" do
       count = 0
       c = TestEvents.new
