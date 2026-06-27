@@ -280,7 +280,35 @@ module EventHandler
         end
         # :ditto:
         def off(type : \{{event_class}}.class, at : ::Int)
-          off type, _event_handler_mutex.synchronize { \{{handlers_list.id}}[at] }
+          # Remove the handler at index *at* directly via `delete_at`. The list
+          # holds `Wrapper(Proc(\{{event_class}}, ::Nil))`, but the
+          # `off(type, wrapper)` overload is restricted to the erased
+          # `Wrapper(Proc(::EventHandler::Event, ::Nil))`, which generics treat as
+          # an unrelated type; routing there is wrong two ways. Passing the
+          # concrete-typed wrapper unchanged falls through to `off(type, emit = ...)`,
+          # wiping *all* handlers. Erasing it with `unsafe_as` to reach
+          # `off(type, wrapper)` instead removes nothing: `Array#delete` relies on
+          # `Reference#==`, whose identity branch is `==(other : self)` — once the
+          # stored concrete-typed element is compared against the erased type that
+          # branch no longer applies, so the catch-all `==(other) : false` matches.
+          # Deleting by index sidesteps both: no comparison, no type erasure, and
+          # the captured concrete-typed wrapper still matches `emit_remove_handler_event`.
+          w = _event_handler_mutex.synchronize {
+            if found = \{{handlers_list.id}}[at]?
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                updated = \{{handlers_list.id}}.dup
+                updated.delete_at at
+                @\{{handlers_list.id}} = updated
+              \{% else %}
+                \{{handlers_list.id}}.delete_at at
+              \{% end %}
+              found
+            end
+          }
+          if w
+            emit_remove_handler_event type, w
+            w
+          end
         end
 
         # Removes all handlers for event *type*.
