@@ -146,6 +146,24 @@ module EventHandler
       result.as(ClickedEvent).x.should eq 3
     end
 
+    it "waits with a handler, runs it, and returns the emitted event" do
+      c = TestEvents.new
+      result = nil
+      ran = 0
+      spawn do
+        result = c.wait(ClickedEvent, ->(e : ClickedEvent) { ran += 1; nil })
+      end
+      sleep 0.1.seconds
+      c.emit ClickedEvent, 7, 8
+      sleep 0.1.seconds
+      # The handler must have run...
+      ran.should eq 1
+      # ...and `wait` must return the emitted event (not the handler's nil
+      # result), consistent with the handler-less `wait` overloads.
+      result.class.should eq ClickedEvent
+      result.as(ClickedEvent).x.should eq 7
+    end
+
     it "emits AnyEvents" do
       count = 0
       c = TestEvents.new

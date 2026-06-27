@@ -26,14 +26,23 @@ module EventHandler
       initialize handler, once, async, at, hash
     end
 
+    # Dispatches *obj* to the wrapped handler and returns *obj*.
+    #
+    # The handler itself always returns `Nil` (handlers are `Proc(T, Nil)`),
+    # so returning that result conveys nothing. Returning the dispatched event
+    # instead is what makes `wait(type, handler)`/`wait(type) { ... }` yield the
+    # emitted event, matching the handler-less `wait` overloads (which already
+    # return it). The async branch likewise returns *obj* — the handler runs in
+    # its own fiber, but the caller still gets the event back. `_emit` ignores
+    # this return value, so the dispatch path is unaffected.
     def call(obj, async = nil)
       async = @async if async.nil?
       if async
         call_async obj
-        nil
       else
         @handler.call obj
       end
+      obj
     end
 
     # The `spawn` block closes over *obj*, and Crystal heap-allocates that
