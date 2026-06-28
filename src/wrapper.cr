@@ -1,4 +1,16 @@
+require "log"
+
 module EventHandler
+  # Logger used to report failures that occur while dispatching a handler
+  # asynchronously. See `Wrapper#call_async` for the async error contract.
+  #
+  # Following Crystal's `Log` conventions, this emits nothing until the
+  # application configures a backend (e.g. `Log.setup_from_env` or
+  # `::Log.setup(:warning)`). Applications that care about async handler
+  # failures should configure a backend so these `error`-level entries
+  # become visible.
+  Log = ::Log.for("event_handler")
+
   # Generic class wrapping each installed handler.
   #
   # This class is generally not used directly, but is implicitly created and returned in response to `on()`.
@@ -51,9 +63,31 @@ module EventHandler
     # on *every* call, including the (common) synchronous path that never spawns.
     # Keeping the closure in its own method confines that allocation to the
     # async path, leaving synchronous dispatch allocation-free.
+    #
+    # Async error contract:
+    #
+    # In the synchronous path (`#call` without async), a handler that raises
+    # propagates the exception straight to the caller of `emit`/`call`, exactly
+    # as before — this method does NOT alter that behavior.
+    #
+    # In the asynchronous path the handler runs in its own `spawn`ed fiber,
+    # detached from the emitter, so a raised exception has no caller to
+    # propagate to. Crystal's default for an unhandled exception in a spawned
+    # fiber is to abort the whole *process*, which would let a single
+    # misbehaving async handler take down an otherwise healthy application; a
+    # bare `spawn` with no rescue also makes the failure easy to lose. To avoid
+    # both silent loss and process abort, the fiber rescues any exception and
+    # routes it through `EventHandler::Log` at `error` level (message +
+    # exception). The failure is therefore observable and contained: it neither
+    # vanishes without a trace nor disturbs unrelated state or other handlers,
+    # which keep running independently in their own fibers.
     private def call_async(obj)
       spawn do
-        @handler.call obj
+        begin
+          @handler.call obj
+        rescue ex
+          Log.error(exception: ex) { "Unhandled exception in async event handler" }
+        end
       end
     end
   end
