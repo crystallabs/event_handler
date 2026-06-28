@@ -422,9 +422,16 @@ module EventHandler
                 once_fired.each { |h| \{{handlers_list.id}}.delete h }
               end
             \{% end %}
-            # Announce each removal outside the lock, preserving the original
-            # one-`RemoveHandlerEvent`-per-removed-handler behavior.
-            once_fired.each { |h| emit_remove_handler_event type, h }
+            # Announce each removal outside the lock, once per *distinct* wrapper.
+            # A wrapper registered in several slots (e.g. the same object added
+            # more than once via `on(type, w)`) lands in `once_fired` once per
+            # slot, but the batched removal above drops every identical copy in a
+            # single pass — so it leaves the list exactly once and must announce
+            # exactly once. `uniq` (identity for `Reference`s) restores the
+            # original per-handler `off` loop's behavior, whose second `off` for a
+            # duplicate found nothing already gone and emitted no further event,
+            # and matches `remove_all_handlers`' per-distinct-object contract.
+            once_fired.uniq.each { |h| emit_remove_handler_event type, h }
           end
 
           event
