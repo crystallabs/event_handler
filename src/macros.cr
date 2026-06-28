@@ -97,9 +97,9 @@ module EventHandler
         # name was previously transformed twice, in both `emit` overloads).
         # The same `name.identify.underscore.tr("()", "__")` transform that
         # `handlers_list` uses is applied so the names match the generated getters.
-        \{% add_handlers_list    = "_event_" + ::EventHandler::AddHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
+        \{% add_handlers_list = "_event_" + ::EventHandler::AddHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
         \{% remove_handlers_list = "_event_" + ::EventHandler::RemoveHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
-        \{% any_handlers_list    = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
+        \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
 
         private getter \{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
 
