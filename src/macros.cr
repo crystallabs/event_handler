@@ -419,9 +419,27 @@ module EventHandler
             _event_handler_mutex.synchronize do
               \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
                 # One copy-on-write rebuild dropping every fired once-handler.
+                # A single pass over the snapshot both builds the fresh published
+                # array (the kept handlers) and collects the *distinct* fired
+                # wrappers actually present (the ones to announce). This replaces
+                # the previous two full passes (`reject` + `select`) plus the
+                # separate `uniq`: it halves the per-element `fired.includes?`
+                # scans and drops the intermediate `select` result array. Result
+                # is identical — `kept` is a brand-new array (COW preserved), and
+                # `removed` holds the same distinct wrappers in first-seen order.
                 current = \{{handlers_list.id}}
-                @\{{handlers_list.id}} = current.reject { |h| fired.includes?(h) }
-                removed = current.select { |h| fired.includes?(h) }.uniq
+                kept = fired.class.new
+                dropped = nil
+                current.each do |h|
+                  if fired.includes?(h)
+                    d = (dropped ||= fired.class.new)
+                    d << h unless d.includes?(h)
+                  else
+                    kept << h
+                  end
+                end
+                @\{{handlers_list.id}} = kept
+                removed = dropped
               \{% else %}
                 # `Array#delete` returns the element when it removed something and
                 # `nil` when the wrapper was already gone, so this both performs
