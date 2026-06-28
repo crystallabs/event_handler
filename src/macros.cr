@@ -467,17 +467,31 @@ module EventHandler
             \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
             return event if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
 
-            # Only dispatch to `AnyEvent` when something is actually listening
-            # for it. The `_emit ::EventHandler::AnyEvent, event` call wraps the
-            # event in a freshly-allocated `AnyEvent.new(event)` *before* `_emit`
-            # reaches its own empty-list fast path, so without this guard every
-            # emit that has concrete-type handlers but no `AnyEvent` listener (the
-            # common case) would allocate — and immediately discard — an
-            # `AnyEvent` wrapper. Guarding here keeps that allocation off the hot
-            # path. When an `AnyEvent` handler exists, behavior is unchanged.
-            _emit ::EventHandler::AnyEvent, event unless \{{any_handlers_list.id}}.empty?
+            # Skip the `AnyEvent` meta-dispatch when *this* event already IS
+            # `AnyEvent`. The `_emit(type, event)` below dispatches to the very
+            # same (`AnyEvent`) handler list, so re-dispatching here would fire
+            # every `AnyEvent` handler *twice* — and worse, wrap the event in a
+            # second `AnyEvent.new(event)`, handing handlers an `AnyEvent` nested
+            # inside another `AnyEvent`. Emitting an `AnyEvent` directly happens
+            # naturally via the module-level `emit(event)` helper whenever the
+            # event in hand is itself an `AnyEvent`.
+            \{% if e != ::EventHandler::AnyEvent %}
+              # Only dispatch to `AnyEvent` when something is actually listening
+              # for it. The `_emit ::EventHandler::AnyEvent, event` call wraps the
+              # event in a freshly-allocated `AnyEvent.new(event)` *before* `_emit`
+              # reaches its own empty-list fast path, so without this guard every
+              # emit that has concrete-type handlers but no `AnyEvent` listener (the
+              # common case) would allocate — and immediately discard — an
+              # `AnyEvent` wrapper. Guarding here keeps that allocation off the hot
+              # path. When an `AnyEvent` handler exists, behavior is unchanged.
+              _emit ::EventHandler::AnyEvent, event unless \{{any_handlers_list.id}}.empty?
+            \{% end %}
           \{% else %}
-            _emit ::EventHandler::AnyEvent, event
+            # See above: never re-dispatch `AnyEvent` to itself, or its handlers
+            # fire twice (and receive a doubly-wrapped event).
+            \{% if e != ::EventHandler::AnyEvent %}
+              _emit ::EventHandler::AnyEvent, event
+            \{% end %}
           \{% end %}
           _emit(type, event)
         end
