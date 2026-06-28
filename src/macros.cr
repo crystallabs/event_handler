@@ -261,21 +261,34 @@ module EventHandler
         end
         # :ditto:
         def off(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          if w = _event_handler_mutex.synchronize {
-                   \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                     # Copy-on-write delete: only publish a fresh array when the
-                     # wrapper was actually present. See `EMIT_COPY_ON_WRITE`.
-                     updated = \{{handlers_list.id}}.dup
-                     deleted = updated.delete wrapper
-                     @\{{handlers_list.id}} = updated if deleted
-                     deleted
-                   \{% else %}
-                     \{{handlers_list.id}}.delete wrapper
-                   \{% end %}
-                 }
-
+          # The stored handlers are `Wrapper(Proc(\{{event_class}}, ::Nil))`, but
+          # this overload receives the *erased* `Wrapper(Proc(::EventHandler::Event,
+          # ::Nil))` — the exact type handed to `AddHandlerEvent`/`RemoveHandlerEvent`
+          # handlers (via `unsafe_as`) and therefore the only natural source of a
+          # value of this type. Removing it via `Array#delete` silently removes
+          # *nothing*: `delete` relies on `Reference#==`, whose identity branch is
+          # `==(other : self)`, and once a stored concrete-typed element is compared
+          # against the erased type that branch no longer applies, so the catch-all
+          # `==(other) : false` matches every element. (This is the same erasure
+          # pitfall documented on `off(type, at)`.) The erased wrapper is still the
+          # *same object* as the stored one, so locate it by identity (`same?`) and
+          # delete the concrete-typed element that was found — which also keeps the
+          # captured wrapper matching `emit_remove_handler_event`.
+          w = _event_handler_mutex.synchronize {
+            if found = \{{handlers_list.id}}.find { |h| h.same?(wrapper) }
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                updated = \{{handlers_list.id}}.dup
+                updated.delete found
+                @\{{handlers_list.id}} = updated
+              \{% else %}
+                \{{handlers_list.id}}.delete found
+              \{% end %}
+              found
+            end
+          }
+          if w
             emit_remove_handler_event type, w
-           w
+            w
           end
         end
         # :ditto:
