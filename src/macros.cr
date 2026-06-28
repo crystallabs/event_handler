@@ -91,6 +91,16 @@ module EventHandler
         \{% handlers_list = "_event_" + e.name.identify.underscore.tr("()", "__").stringify %}
         \{% event_class = e.name.split('(').first.id %}
 
+        # Handlers-list getter names for the three meta-event classes. Unlike
+        # `handlers_list`, these don't depend on `e`, so they're computed once
+        # here rather than recomputed inline at every use site (the `AnyEvent`
+        # name was previously transformed twice, in both `emit` overloads).
+        # The same `name.identify.underscore.tr("()", "__")` transform that
+        # `handlers_list` uses is applied so the names match the generated getters.
+        \{% add_handlers_list    = "_event_" + ::EventHandler::AddHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
+        \{% remove_handlers_list = "_event_" + ::EventHandler::RemoveHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
+        \{% any_handlers_list    = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
+
         private getter \{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
 
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
@@ -113,7 +123,6 @@ module EventHandler
           # allocate — and immediately discard — an `AddHandlerEvent` even when
           # nobody subscribed to it. Same idea as the `AnyEvent` guard in `emit`.
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            \{% add_handlers_list = "_event_" + ::EventHandler::AddHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
             unless \{{add_handlers_list.id}}.empty?
               _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
             end
@@ -209,7 +218,6 @@ module EventHandler
           # it — `_emit` would otherwise allocate it before its empty-list fast
           # path. Mirrors the `AddHandlerEvent` guard in `internal_insert`.
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            \{% remove_handlers_list = "_event_" + ::EventHandler::RemoveHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
             unless \{{remove_handlers_list.id}}.empty?
               _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
             end
@@ -485,7 +493,6 @@ module EventHandler
         \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}@[AlwaysInline]\{% end %}
         def emit(type : \{{event_class}}.class, event : \{{event_class}})
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
             return event if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
 
             # Skip the `AnyEvent` meta-dispatch when *this* event already IS
@@ -520,7 +527,6 @@ module EventHandler
         \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}@[AlwaysInline]\{% end %}
         def emit(type : \{{event_class}}.class, *args)
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
             # Build the event object only when something is actually listening.
             # `emit(type, event)` above also early-outs with no handlers, but only
             # AFTER the object is constructed; the parameterless per-frame emits
