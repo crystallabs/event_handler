@@ -34,7 +34,7 @@ module EventHandler
       c.handlers(OffWrapperEvent).size.should eq 1
       captured.should_not be_nil
 
-      removed = c.off(OffWrapperEvent, captured.not_nil!)
+      removed = c.off(OffWrapperEvent, captured.not_nil!) # ameba:disable Lint/NotNil
       removed.should_not be_nil
       c.handlers(OffWrapperEvent).size.should eq 0
     end

@@ -59,7 +59,7 @@ module EventHandler
       # Erased wrapper handed to AddHandlerEvent handlers.
       c.on(OffDedupEvent) { |e| e.x; nil }
       captured.should_not be_nil
-      c.off(OffDedupEvent, captured.not_nil!).should_not be_nil
+      c.off(OffDedupEvent, captured.not_nil!).should_not be_nil # ameba:disable Lint/NotNil
       c.handlers(OffDedupEvent).size.should eq 0
     end
   end
