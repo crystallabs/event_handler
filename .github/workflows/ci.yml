@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Install Crystal
-        uses: oprypin/install-crystal@v1
+        uses: crystal-lang/install-crystal@v1
       - name: Cache shards
         uses: actions/cache@v4
         with:
@@ -32,7 +32,7 @@ jobs:
       image: crystallang/crystal:latest-alpine
     steps:
       - name: Download source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Build binaries
         run: |
           shards update --production --release --static --no-debug --ignore-crystal-version
