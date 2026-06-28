@@ -411,27 +411,39 @@ module EventHandler
           end
 
           if once_fired
-            \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-              # One copy-on-write rebuild dropping every fired once-handler.
-              fired = once_fired
-              _event_handler_mutex.synchronize do
-                @\{{handlers_list.id}} = \{{handlers_list.id}}.reject { |h| fired.includes?(h) }
-              end
-            \{% else %}
-              _event_handler_mutex.synchronize do
-                once_fired.each { |h| \{{handlers_list.id}}.delete h }
-              end
-            \{% end %}
+            # Drop every fired once-handler in a single locked pass, recording the
+            # *distinct* wrappers this pass actually removed so each can be
+            # announced (and only those) below.
+            fired = once_fired
+            removed = nil
+            _event_handler_mutex.synchronize do
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                # One copy-on-write rebuild dropping every fired once-handler.
+                current = \{{handlers_list.id}}
+                @\{{handlers_list.id}} = current.reject { |h| fired.includes?(h) }
+                removed = current.select { |h| fired.includes?(h) }.uniq
+              \{% else %}
+                # `Array#delete` returns the element when it removed something and
+                # `nil` when the wrapper was already gone, so this both performs
+                # the removal and records which distinct wrappers were present.
+                removed = fired.uniq.select { |h| !\{{handlers_list.id}}.delete(h).nil? }
+              \{% end %}
+            end
             # Announce each removal outside the lock, once per *distinct* wrapper.
             # A wrapper registered in several slots (e.g. the same object added
             # more than once via `on(type, w)`) lands in `once_fired` once per
             # slot, but the batched removal above drops every identical copy in a
             # single pass — so it leaves the list exactly once and must announce
-            # exactly once. `uniq` (identity for `Reference`s) restores the
-            # original per-handler `off` loop's behavior, whose second `off` for a
-            # duplicate found nothing already gone and emitted no further event,
-            # and matches `remove_all_handlers`' per-distinct-object contract.
-            once_fired.uniq.each { |h| emit_remove_handler_event type, h }
+            # exactly once (`removed` is de-duplicated). Crucially, only wrappers
+            # this pass *actually removed* are announced: a fired once-handler may
+            # already have been dropped by an `off` that ran from another handler
+            # (or fiber) during this same dispatch, which already emitted its own
+            # `RemoveHandlerEvent` — re-announcing it here would fire
+            # `RemoveHandlerEvent` twice for a single removal. This restores the
+            # original per-handler `off` loop's behavior (whose second `off` for an
+            # already-gone wrapper emitted nothing) and matches
+            # `remove_all_handlers`' per-distinct, per-actual-removal contract.
+            removed.try &.each { |h| emit_remove_handler_event type, h }
           end
 
           event
