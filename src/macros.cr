@@ -218,13 +218,21 @@ module EventHandler
           \{% end %}
         end
 
-        # Removes *handler* from list of handlers for event *type*.
-        def off(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil))
-          # Single pass: locate *and* remove the wrapper under one lock, instead
-          # of a `find` scan followed by a second `off`/`delete` scan (and a
-          # second lock acquisition).
+        # Shared core for the predicate-based `off` overloads below
+        # (`off(handler)`, `off(hash)`, `off(wrapper)`), which differ *only* in
+        # how they recognize the handler to drop. In a single locked pass it
+        # locates the first wrapper for which the block returns true, removes
+        # every identical copy of it from the list — in place, or by publishing a
+        # fresh array under copy-on-write — and returns it; the matching
+        # `RemoveHandlerEvent` is then emitted *outside* the lock (so its handler
+        # may freely call back into `on`/`off`). Returns the removed wrapper, or
+        # `nil` if none matched. Previously each overload carried its own verbatim
+        # copy of this COW/non-COW removal logic; centralizing it here keeps that
+        # correctness-sensitive code in exactly one place so the variants can
+        # never drift apart.
+        private def _off_first(type : \{{event_class}}.class, &)
           w = _event_handler_mutex.synchronize {
-            if found = \{{handlers_list.id}}.find { |h| h.handler == handler }
+            if found = \{{handlers_list.id}}.find { |h| yield h }
               \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
                 updated = \{{handlers_list.id}}.dup
                 updated.delete found
@@ -239,57 +247,33 @@ module EventHandler
             emit_remove_handler_event type, w
             w
           end
+        end
+
+        # Removes *handler* from list of handlers for event *type*.
+        def off(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil))
+          _off_first(type) { |h| h.handler == handler }
         end
         # :ditto:
         def off(type : \{{event_class}}.class, hash : ::UInt64)
-          w = _event_handler_mutex.synchronize {
-            if found = \{{handlers_list.id}}.find { |h| h.handler_hash == hash }
-              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                updated = \{{handlers_list.id}}.dup
-                updated.delete found
-                @\{{handlers_list.id}} = updated
-              \{% else %}
-                \{{handlers_list.id}}.delete found
-              \{% end %}
-              found
-            end
-          }
-          if w
-            emit_remove_handler_event type, w
-            w
-          end
+          _off_first(type) { |h| h.handler_hash == hash }
         end
         # :ditto:
         def off(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          # The stored handlers are `Wrapper(Proc(\{{event_class}}, ::Nil))`, but
-          # this overload receives the *erased* `Wrapper(Proc(::EventHandler::Event,
-          # ::Nil))` — the exact type handed to `AddHandlerEvent`/`RemoveHandlerEvent`
-          # handlers (via `unsafe_as`) and therefore the only natural source of a
-          # value of this type. Removing it via `Array#delete` silently removes
-          # *nothing*: `delete` relies on `Reference#==`, whose identity branch is
-          # `==(other : self)`, and once a stored concrete-typed element is compared
-          # against the erased type that branch no longer applies, so the catch-all
-          # `==(other) : false` matches every element. (This is the same erasure
+          # Match by object identity (`same?`), not `==`. The stored handlers are
+          # `Wrapper(Proc(\{{event_class}}, ::Nil))`, but this overload receives the
+          # *erased* `Wrapper(Proc(::EventHandler::Event, ::Nil))` — the exact type
+          # handed to `AddHandlerEvent`/`RemoveHandlerEvent` handlers (via
+          # `unsafe_as`) and therefore the only natural source of a value of this
+          # type. A `==` lookup would find *nothing*: `Reference#==`'s identity
+          # branch is `==(other : self)`, and once a stored concrete-typed element
+          # is compared against the erased type that branch no longer applies, so
+          # the catch-all `==(other) : false` matches every element. (Same erasure
           # pitfall documented on `off(type, at)`.) The erased wrapper is still the
-          # *same object* as the stored one, so locate it by identity (`same?`) and
-          # delete the concrete-typed element that was found — which also keeps the
-          # captured wrapper matching `emit_remove_handler_event`.
-          w = _event_handler_mutex.synchronize {
-            if found = \{{handlers_list.id}}.find { |h| h.same?(wrapper) }
-              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                updated = \{{handlers_list.id}}.dup
-                updated.delete found
-                @\{{handlers_list.id}} = updated
-              \{% else %}
-                \{{handlers_list.id}}.delete found
-              \{% end %}
-              found
-            end
-          }
-          if w
-            emit_remove_handler_event type, w
-            w
-          end
+          # *same object* as the stored one, so locate it by identity. Once located,
+          # `_off_first`'s `Array#delete found` removes every identical copy
+          # correctly — there `delete` compares the found concrete element against
+          # the stored ones, both concrete-typed, so the identity branch applies.
+          _off_first(type) { |h| h.same?(wrapper) }
         end
         # :ditto:
         def off(type : \{{event_class}}.class, at : ::Int)
