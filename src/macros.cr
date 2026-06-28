@@ -226,6 +226,22 @@ module EventHandler
           \{% end %}
         end
 
+        # Outside-the-lock tail shared by the removal paths (`_off_first` and
+        # `off(type, at)`): given the wrapper their locked removal pass produced
+        # (or `nil` if nothing matched), announce its removal — necessarily
+        # *outside* the handler-list lock, so a `RemoveHandlerEvent` handler may
+        # freely call back into `on`/`off` — and return it. Returns the removed
+        # wrapper, or `nil` when the locked pass removed nothing. The two callers'
+        # synchronize bodies can't merge (one finds-and-deletes a wrapper, the
+        # other deletes by index), but this trailing announce-and-return was
+        # byte-identical in both, so it lives here once.
+        private def _announce_removed(type : \{{event_class}}.class, w)
+          if w
+            emit_remove_handler_event type, w
+            w
+          end
+        end
+
         # Shared core for the predicate-based `off` overloads below
         # (`off(handler)`, `off(hash)`, `off(wrapper)`), which differ *only* in
         # how they recognize the handler to drop. In a single locked pass it
@@ -251,10 +267,7 @@ module EventHandler
               found
             end
           }
-          if w
-            emit_remove_handler_event type, w
-            w
-          end
+          _announce_removed type, w
         end
 
         # Removes *handler* from list of handlers for event *type*.
@@ -310,10 +323,7 @@ module EventHandler
               found
             end
           }
-          if w
-            emit_remove_handler_event type, w
-            w
-          end
+          _announce_removed type, w
         end
 
         # Removes all handlers for event *type*.
