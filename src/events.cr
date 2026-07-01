@@ -12,9 +12,8 @@ module EventHandler
   #
   # Both carry the identical payload — the event *type* a handler was added to
   # or removed from, plus the `Wrapper` describing that handler — so the shared
-  # signature is declared once here rather than copied at each definition. Each
-  # call still gets its own doc comment (below), which documents the emitted
-  # event for `crystal doc`.
+  # signature is declared once here. Each call still gets its own doc comment
+  # below, for `crystal doc`.
   private macro handler_meta_event(name)
     event {{name}},
       event : ::EventHandler::Event.class,
@@ -23,23 +22,15 @@ module EventHandler
 
   # Meta event, emitted whenever a handler is added for any event, including itself.
   #
-  # When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke
-  # their handlers with the `Wrapper` object. A wrapper object for each
-  # handler is implicitly created on every `on()`, and in addition to providing
-  # access to the handlers themselves, wrappers also contain the values of
-  # arguments used during handler subscription (values of *once?*, *async?*,
-  # and *at*). This allows listeners on these meta events full insight into
-  # the added handlers and their settings.
+  # A `Wrapper` is implicitly created for each handler on every `on()`, and
+  # besides the handler itself carries the subscription args (*once?*, *async?*,
+  # *at*) — giving listeners on this meta event full insight into the handler.
   handler_meta_event AddHandlerEvent
 
   # Meta event, emitted whenever a handler is removed from any event, including itself.
   #
-  # When `AddHandlerEvent` and `RemoveHandlerEvent` are emitted, they invoke
-  # their handlers with the `Wrapper` object. A wrapper object for each
-  # handler is implicitly created on every `on()`, and in addition to providing
-  # access to the handlers themselves, wrappers also contain the values of
-  # arguments used during handler subscription (values of *once?*, *async?*,
-  # and *at*). This allows listeners on these meta events full insight into
-  # the added handlers and their settings.
+  # A `Wrapper` is implicitly created for each handler on every `on()`, and
+  # besides the handler itself carries the subscription args (*once?*, *async?*,
+  # *at*) — giving listeners on this meta event full insight into the handler.
   handler_meta_event RemoveHandlerEvent
 end
