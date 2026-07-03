@@ -371,6 +371,12 @@ module EventHandler
           \{% end %}
         end
 
+        # Whether any handler is registered for *type*. Allocation-free
+        # (unlike `handlers(type).any?`, which dups the COW list).
+        def has_handlers?(type : \{{event_class}}.class) : Bool
+          !\{{handlers_list.id}}.empty?
+        end
+
         # Low-level function used to execute handlers and almost nothing else.
         # Regular users should use `#emit` instead.
         protected def _emit(type : \{{event_class}}.class, event : \{{event_class}}, async : ::Bool? = nil)
