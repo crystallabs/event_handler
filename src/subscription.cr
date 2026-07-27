@@ -22,7 +22,7 @@ module EventHandler
     def on(target, type : T.class, once = false, async = ::EventHandler.async?,
            at = ::EventHandler.at_end, &block : T -> ::Nil) : self forall T
       off
-      wrapper = target.on(type, once, async, at, &block)
+      wrapper = target.on(type, once: once, async: async, at: at, &block)
       @cancel = -> { target.off(type, wrapper); nil }
       self
     end
