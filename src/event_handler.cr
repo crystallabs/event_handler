@@ -52,6 +52,7 @@ require "./macros"
 require "./wrapper"
 require "./event"
 require "./events"
+require "./subscription"
 
 module EventHandler
   # Asynchronous execution flag; default false.
