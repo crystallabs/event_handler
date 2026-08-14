@@ -198,6 +198,28 @@ module EventHandler
           on(type, once: once, async: async, at: at) { |e| channel.send e; true }
         end
 
+        # Per-event subscribe sugar, named after the event itself (the
+        # underscored last path component of the event class: `event Clicked`
+        # also defines `on_clicked(&)` on every emitter). Equivalent to
+        # `on(\{{event_class}}) { |e| ... }`; returns the
+        # `EventHandler::Subscription` (see `on`). Emitters may shadow a
+        # generated method with a richer hand-written adapter (one yielding the
+        # event's payload instead of the event).
+        #
+        # Skipped for an event nested inside another event class (e.g. a
+        # per-key `KeyPress::<member>` family): the last name component alone
+        # is ambiguous there — it can collide with an unrelated top-level
+        # event of the same name — and such families are typically generated
+        # and huge. Subscribe to those with the explicit `on(Type) { }` form.
+        \{% enclosing = event_class.stringify.split("::")[0..-2].join("::") %}
+        \{% enclosing_type = enclosing.empty? ? nil : parse_type(enclosing).resolve? %}
+        \{% unless enclosing_type && enclosing_type < ::EventHandler::Event %}
+          \{% sugar_name = "on_" + event_class.stringify.split("::").last.underscore %}
+          def \{{sugar_name.id}}(once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, &handler : \{{event_class}} -> ::Nil) : ::EventHandler::Subscription
+            on \{{event_class}}, handler, once, async, at
+          end
+        \{% end %}
+
         # Adds *handler* to the list of handlers for event *type*; removed
         # automatically after it triggers once. Returns an
         # `EventHandler::Subscription` (see `on`); its `#off` is a no-op after
