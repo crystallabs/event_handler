@@ -23,10 +23,16 @@ module EventHandler
 
       removed = c.off(OffAtEvent, at: 1)
 
-      # Exactly one handler removed (not all of them), and it was the one at idx 1.
+      # Exactly one handler removed (not all of them), and it was the one at
+      # idx 1. Identity (`same?`) comparisons: `Subscription#wrapper` holds
+      # the erased `Wrapper(Proc(Event, Nil))` spelling, and `Reference#==`
+      # across the concrete/erased generic instantiations never takes its
+      # identity branch.
       c.handlers(OffAtEvent).size.should eq 2
-      removed.should eq w1
-      c.handlers(OffAtEvent).should eq [w0, w2]
+      removed.not_nil!.same?(w1.wrapper).should be_true # ameba:disable Lint/NotNil
+      c.handlers(OffAtEvent).zip([w0.wrapper, w2.wrapper]).each do |got, want|
+        got.same?(want).should be_true
+      end
     end
   end
 end

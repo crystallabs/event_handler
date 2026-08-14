@@ -12,6 +12,31 @@ module EventHandler
   class Subscription
     @cancel : Proc(::Nil)?
 
+    # The `Wrapper` behind this subscription, when it was returned by the
+    # generated `on`/`once` (in the erased `Wrapper(Proc(Event, Nil))` form
+    # those hand to `AddHandlerEvent` listeners). `nil` for a slot built
+    # empty and armed via `#on`, which wraps a nested subscription instead.
+    getter wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil))?
+
+    # An empty (inactive) subscription, armed later via `#on`.
+    def initialize
+    end
+
+    # A subscription over an already-installed handler: *cancel* removes it.
+    # This is the form the generated `EventHandler#on`/`#once` return, so
+    # every subscription — whether built here or handed out by `on` — tears
+    # down through the same idempotent `#off`.
+    def initialize(@cancel : Proc(::Nil), @wrapper = nil)
+    end
+
+    # The registered handler's identity hash (`Wrapper#handler_hash`), for the
+    # `off(type, hash)` bulk-removal form. Raises `ArgumentError` when this
+    # subscription holds no wrapper (see `#wrapper`).
+    def handler_hash : UInt64
+      w = @wrapper || raise ::ArgumentError.new("Subscription armed via #on carries no wrapper")
+      w.handler_hash
+    end
+
     # Whether a handler is currently installed.
     def active? : Bool
       !@cancel.nil?
@@ -22,8 +47,10 @@ module EventHandler
     def on(target, type : T.class, once = false, async = ::EventHandler.async?,
            at = ::EventHandler.at_end, &block : T -> ::Nil) : self forall T
       off
-      wrapper = target.on(type, once: once, async: async, at: at, &block)
-      @cancel = -> { target.off(type, wrapper); nil }
+      # `target.on` already returns a `Subscription`; this slot only adds the
+      # re-arm/idempotence bookkeeping on top of it.
+      sub = target.on(type, once: once, async: async, at: at, &block)
+      @cancel = -> { sub.off }
       self
     end
 

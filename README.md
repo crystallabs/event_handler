@@ -26,7 +26,7 @@ Add the dependency to `shard.yml`:
 dependencies:
   event_handler:
     github: crystallabs/event_handler
-    version: ~> 1.0
+    version: ~> 2.0
 ```
 
 ## Usage in a nutshell
@@ -83,6 +83,14 @@ my.off MyClass::TestEvent, handler
 
 # Or remove all handlers for an event at once
 my.off MyClass::TestEvent
+```
+
+Every `on`/`once` also returns an `EventHandler::Subscription` — a
+self-contained handle whose `#off` disconnects exactly that handler:
+
+```crystal
+subscription = my.on(MyClass::TestEvent) { |e| puts e.message }
+subscription.off
 ```
 
 ## Documentation
@@ -244,8 +252,9 @@ wrapper = ClickedEvent::Wrapper.new(handler: handler, once: false, async: false,
 my.on ClickedEvent, wrapper
 ```
 
-Using a variation of the last example, where wrapper object is obtained from a call
-to `on()` and then reused to add the same handler the second time:
+Using a variation of the last example, where the `Subscription` returned by
+`on()` is reused to add the same handler (i.e. the same underlying wrapper
+object) a second time:
 
 ```crystal
 my = MyClass.new
@@ -255,9 +264,9 @@ handler = ->(e : ClickedEvent) do
   nil
 end
 
-wrapper = my.on ClickedEvent, handler
+subscription = my.on ClickedEvent, handler
 
-my.on ClickedEvent, wrapper
+my.on ClickedEvent, subscription
 ```
 
 Using a Channel:
@@ -276,6 +285,47 @@ my.on ClickedEvent, channel
 
 When `on` is invoked with a channel, it implicitly creates and
 adds an event handler which forwards received events into the channel.
+
+#### Subscriptions
+
+Every form of `on` and `once` returns an `EventHandler::Subscription` — a
+self-contained disconnect handle, comparable to Qt's `QMetaObject::Connection`.
+Its `#off` removes exactly the handler that call registered, with no need to
+restate the event type or keep the handler/wrapper around, and it is
+idempotent (a second `#off`, or an `#off` after a `once:` handler already
+auto-removed itself, is a no-op):
+
+```crystal
+subscription = my.on ClickedEvent do |e|
+  p "Hello"
+end
+
+subscription.off # disconnected
+subscription.off # no-op
+```
+
+For code that works with the identity-based forms, the subscription exposes
+the underlying `Wrapper` (in the erased `Wrapper(Proc(Event, Nil))` spelling
+also used by `AddHandlerEvent`/`RemoveHandlerEvent`) as `#wrapper`, and the
+handler's hash as `#handler_hash` — and both `on` and `off` accept a
+`Subscription` directly, as shorthand for operating on its wrapper.
+
+A `Subscription` can also be created empty and armed later — a re-armable
+single slot, where arming cancels any handler the slot already holds:
+
+```crystal
+slot = EventHandler::Subscription.new
+slot.on(my, ClickedEvent) { |e| p "Hello" } # arms (cancelling any previous)
+slot.active? # => true
+slot.off     # cancels; safe to call twice
+```
+
+Several subscriptions torn down together can be collected in an
+`EventHandler::Subscriptions` bag: its `#on(target, type) { }` adds a tracked
+subscription (returned, so it can still be cancelled individually) and its
+`#off` cancels every remaining one. Both classes also answer to
+`dispose`/`disposed?`, for callers whose teardown vocabulary comes from
+reactive stacks.
 
 #### Event handler options
 
@@ -405,13 +455,31 @@ my.handlers(ClickedEvent).size
 my.handlers(ClickedEvent).empty?
 ```
 
-Please note that `handlers` exposes the Array containing the list of handlers.
-
-Modifying the array will directly modify the list of handlers defined for an event. This should only be done with due caution.
+Under the default compile-time settings (`EMIT_COPY_ON_WRITE = true`),
+`handlers` returns a *copy* of the handler list — the published array must
+never be mutated in place, so a caller modifying the result cannot corrupt an
+in-flight dispatch (and cannot use it to add/remove handlers; use `on`/`off`).
+With copy-on-write disabled, it exposes the live Array, and modifying it
+directly modifies the handlers defined for the event — only to be done with
+due caution.
 
 ### Removing event handlers
 
-Event handlers can be removed in one of five ways:
+Event handlers can be removed in one of six ways.
+
+By the `Subscription` returned from `on`/`once` — the recommended way, since
+it needs neither the event type nor the handler kept around:
+
+```crystal
+subscription = my.on ClickedEvent do |e|
+  p "Hello"
+end
+
+subscription.off
+```
+
+(`my.off ClickedEvent, subscription` is also accepted, as shorthand for
+removing by the subscription's wrapper.)
 
 By handler Proc:
 
@@ -437,15 +505,16 @@ my.on ClickedEvent, handler
 my.off ClickedEvent, hash
 ```
 
-By handler wrapper object:
+By handler wrapper object (obtained from `Subscription#wrapper`, or from an
+`AddHandlerEvent`):
 
 ```crystal
 handler = ClickedEvent::Handler.new {
   p "Hello"
 }
 
-wrapper = my.on ClickedEvent, handler
-my.off ClickedEvent, wrapper
+subscription = my.on ClickedEvent, handler
+my.off ClickedEvent, subscription.wrapper.not_nil!
 ```
 
 Internally, handlers are always removed from events by removing their wrapper
