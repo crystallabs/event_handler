@@ -9,14 +9,14 @@
 # class_record MyClass, a : ::Int32, b : String, c : ::Bool
 # ```
 macro class_record(name, *properties)
-  class {{name.id}}
+  class {{ name.id }}
     {% for property in properties %}
       {% if property.is_a?(Assign) %}
-        getter {{property.target.id}}
+        getter {{ property.target.id }}
       {% elsif property.is_a?(TypeDeclaration) %}
-        getter {{property.var}} : {{property.type}}
+        getter {{ property.var }} : {{ property.type }}
       {% else %}
-        getter :{{property.id}}
+        getter :{{ property.id }}
       {% end %}
     {% end %}
 
@@ -27,7 +27,7 @@ macro class_record(name, *properties)
                    }})
     end
 
-    {{yield}}
+    {{ yield }}
 
     def copy_with({{
                     properties.map do |property|
@@ -79,7 +79,7 @@ module EventHandler
   # event MouseClick, x : ::Int32, y : ::Int32
   # ```
   macro event(e, *args)
-    class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ args.splat }}{% end %}
+    class_record {{ e.id }} < ::EventHandler::Event{% if args.size > 0 %}, {{ args.splat }}{% end %}
   end
 
   # :nodoc:

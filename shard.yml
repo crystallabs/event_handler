@@ -11,4 +11,9 @@ license: AGPLv3
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.6.0
+    branch: master
+
+# Ameba no longer builds itself on install; `shards build ameba` produces bin/ameba.
+targets:
+  ameba:
+    main: lib/ameba/bin/ameba.cr

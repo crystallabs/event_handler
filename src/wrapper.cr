@@ -69,11 +69,9 @@ module EventHandler
     # disturbing other handlers' fibers.
     private def call_async(obj)
       spawn do
-        begin
-          @handler.call obj
-        rescue ex
-          Log.error(exception: ex) { "Unhandled exception in async event handler" }
-        end
+        @handler.call obj
+      rescue ex
+        Log.error(exception: ex) { "Unhandled exception in async event handler" }
       end
     end
   end

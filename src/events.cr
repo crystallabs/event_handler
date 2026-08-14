@@ -15,7 +15,7 @@ module EventHandler
   # signature is declared once here. Each call still gets its own doc comment
   # below, for `crystal doc`.
   private macro handler_meta_event(name)
-    event {{name}},
+    event {{ name }},
       event : ::EventHandler::Event.class,
       wrapper : ::EventHandler::Wrapper(Proc(Event, Nil))
   end

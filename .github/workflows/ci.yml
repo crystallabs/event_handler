@@ -25,7 +25,9 @@ jobs:
       - name: Check formatting
         run: crystal tool format --check
       - name: Run ameba
-        run: ./bin/ameba
+        run: |
+          shards build ameba
+          ./bin/ameba
   release_linux:
     runs-on: ubuntu-latest
     container:

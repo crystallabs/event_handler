@@ -1,6 +1,6 @@
 # Ameba configuration — https://github.com/crystal-ameba/ameba
 #
-# Run with: ./bin/ameba   (binary built by `shards install`)
+# Run with: ./bin/ameba   (binary built by `shards build ameba`)
 
 Globs:
   - "**/*.cr"
