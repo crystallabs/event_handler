@@ -215,7 +215,12 @@ module EventHandler
         \{% enclosing_type = enclosing.empty? ? nil : parse_type(enclosing).resolve? %}
         \{% unless enclosing_type && enclosing_type < ::EventHandler::Event %}
           \{% sugar_name = "on_" + event_class.stringify.split("::").last.underscore %}
-          def \{{sugar_name.id}}(once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, &handler : \{{event_class}} -> ::Nil) : ::EventHandler::Subscription
+          # Options are keyword-only (bare `*`, like the block overload of
+          # `on`): with untyped positionals an emitter's own same-name sugar
+          # taking positional args (e.g. Crysterm's `on_key('q', :escape)`)
+          # would bind them to `once`/`async` here and fail deep in
+          # `internal_insert` instead of resolving to that overload.
+          def \{{sugar_name.id}}(*, once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, &handler : \{{event_class}} -> ::Nil) : ::EventHandler::Subscription
             on \{{event_class}}, handler, once, async, at
           end
         \{% end %}
@@ -590,8 +595,15 @@ module EventHandler
           _emit(type, event)
         end
         # :ditto:
+        #
+        # Returns `Nil`, unconditionally: with no listener the event object is
+        # never built (see below), so there would be nothing to return, and a
+        # return type that depends on whether anyone happens to be subscribed is
+        # not a usable contract. A caller that needs the emitted object back
+        # constructs it itself and uses the `emit(type, event)` form, which
+        # always returns it.
         \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}@[AlwaysInline]\{% end %}
-        def emit(type : \{{event_class}}.class, *args)
+        def emit(type : \{{event_class}}.class, *args) : ::Nil
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
             # Build the event object only when something is listening.
             # `emit(type, event)` above also early-outs with no handlers, but
@@ -599,10 +611,7 @@ module EventHandler
             # per-frame emits (`PreRender`/`Rendered`/`Focus`, fired per widget
             # every frame with zero listeners in a typical app) would otherwise
             # heap-allocate an event immediately discarded. Guarding before
-            # `.new` keeps that allocation off the hot path. NOTE: in the
-            # no-listener case the splat form returns `nil`, so its return type
-            # is nilable — callers needing the emitted object back must use the
-            # explicit `emit(event)` form, which always constructs and returns it.
+            # `.new` keeps that allocation off the hot path.
             return if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
           \{% end %}
           event =  \{{event_class}}.new *args
@@ -610,6 +619,25 @@ module EventHandler
         end
 
       \{% end %}
+
+      # Removes every handler this emitter carries, for every event type — the
+      # whole-object counterpart of `remove_all_handlers(type)`. Use it when the
+      # emitter itself is being torn down and nothing subscribed to it should
+      # keep running (or keep the emitter, and whatever its handlers captured,
+      # alive).
+      #
+      # Handlers this object registered on *other* emitters are unaffected —
+      # nothing links them back here. Cancel those through the
+      # `Subscription`/`Subscriptions` they returned.
+      #
+      # *emit* controls `RemoveHandlerEvent` emission exactly as in
+      # `remove_all_handlers(type, emit)`; it defaults to off here, since a
+      # torn-down emitter has no use for the notifications.
+      def remove_all_handlers(emit = false) : ::Nil
+        \{% for name in ::EventHandler::Event.all_subclasses.map { |e| e.name.split('(').first }.uniq %}
+          remove_all_handlers \{{ name.id }}, emit
+        \{% end %}
+      end
 
     \{% end %}
   end
