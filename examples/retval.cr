@@ -14,7 +14,8 @@ c = MyClass.new
 
 c.on(ClickedEvent) { |e| e.return_value += e.x + e.y }
 
-event = c.emit ClickedEvent, 1, 2
+# `emit ClickedEvent, 1, 2` returns nil, so build the event and emit the object.
+event = c.emit ClickedEvent, ClickedEvent.new(1, 2)
 p event.return_value # => 3
 
 c.emit ClickedEvent, event

@@ -476,77 +476,32 @@ module EventHandler
             handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
           \{% end %}
 
-          # Invokes all registered handlers, collecting those meant to run only
-          # once so they can be removed afterward.
+          # Invokes all registered handlers.
           #
-          # Once-handlers are removed in a single batched copy-on-write pass
-          # after the loop, rather than calling `off` per fired once-handler:
-          # the latter would re-lock the mutex and (under copy-on-write)
-          # re-`dup` the entire array per handler — O(k) locks and O(k·n)
-          # copying when k of n handlers fire once. Batching collapses that to
-          # one lock and one array rebuild. `once_fired` stays `nil` (no
-          # allocation) when no once-handler fires.
-          once_fired = nil
-          # Removal of fired once-handlers runs in an `ensure` so that if a
-          # handler raises mid-dispatch, the once-handlers that already fired are
-          # still unregistered before the exception propagates — otherwise they
-          # would stay registered and fire again on the next emit. A handler is
-          # appended to `once_fired` only after its `call` returns, so a raising
-          # once-handler is not itself in the list (matching upstream, which
-          # `off`'d each once-handler immediately after a successful call).
-          begin
-            handlers.each do |handler|
-              handler.call(event, async)
-              if handler.once?
-                (once_fired ||= ::Array(typeof(handler)).new) << handler
-              end
+          # A once-handler is removed from the published list *before* it runs,
+          # not after: the removal is its claim. Every dispatch — this one, a
+          # nested one started by a handler re-emitting the event, or one on
+          # another fiber — iterates its own snapshot, so a fired once-handler
+          # can appear in several of them; whichever dispatch removes it first
+          # runs it, and the others find nothing to remove and skip it. (With
+          # removal after the call, a nested dispatch would run it a second
+          # time; for `wait`'s implicit channel handler that second `send` has
+          # no receiver and blocks the emitter forever.) Same order as Node's
+          # `EventEmitter#once`. Consequences: a once-handler that raises is
+          # already gone, a once-handler `off`'d mid-dispatch by an earlier
+          # handler no longer runs, and a once-handler may re-register itself
+          # from inside its own body and stay registered.
+          #
+          # Per fired once-handler this costs one lock and (under copy-on-write)
+          # one array copy — the same as the single batched pass it replaces
+          # when one once-handler fires per emit, which is the usual case
+          # (`wait`, a single `once`). The `RemoveHandlerEvent` is emitted by
+          # `_off_first`, outside the lock, before the handler runs.
+          handlers.each do |handler|
+            if handler.once?
+              next unless _off_first(type) { |h| h.same?(handler) }
             end
-          ensure
-            if once_fired
-              # Drop every fired once-handler in a single locked pass, recording
-              # the distinct wrappers this pass actually removed so only those
-              # are announced below.
-              fired = once_fired
-              removed = nil
-              _event_handler_mutex.synchronize do
-                \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                  # One pass over the snapshot both builds the fresh published
-                  # array (kept handlers) and collects the distinct fired wrappers
-                  # actually present (to announce) — halving the per-element
-                  # `fired.includes?` scans versus separate `reject`+`select`+`uniq`
-                  # passes. `kept` is a brand-new array (COW preserved); `removed`
-                  # holds the distinct wrappers in first-seen order.
-                  current = \{{handlers_list.id}}
-                  kept = fired.class.new
-                  dropped = nil
-                  current.each do |h|
-                    if fired.includes?(h)
-                      d = (dropped ||= fired.class.new)
-                      d << h unless d.includes?(h)
-                    else
-                      kept << h
-                    end
-                  end
-                  @\{{handlers_list.id}} = kept
-                  removed = dropped
-                \{% else %}
-                  # `Array#delete` returns the element when it removed something and
-                  # `nil` when the wrapper was already gone, so this both performs
-                  # the removal and records which distinct wrappers were present.
-                  removed = fired.uniq.select { |h| !\{{handlers_list.id}}.delete(h).nil? }
-                \{% end %}
-              end
-              # Announce each removal outside the lock, once per distinct wrapper.
-              # A wrapper registered in several slots lands in `once_fired` once
-              # per slot, but the batched removal above drops every identical copy
-              # in one pass, so it must announce exactly once (`removed` is
-              # de-duplicated). Only wrappers this pass actually removed are
-              # announced: a fired once-handler may already have been dropped by
-              # an `off` from another handler/fiber during this dispatch, which
-              # already emitted its own `RemoveHandlerEvent` — re-announcing would
-              # double-fire it.
-              removed.try &.each { |h| emit_remove_handler_event type, h }
-            end
+            handler.call(event, async)
           end
 
           event

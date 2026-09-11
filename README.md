@@ -331,8 +331,9 @@ reactive stacks.
 
 All of the above methods for adding handlers support arguments `once`, `async`, and `at`.
 
-`once` specifies whether the handler should run only once and then be automatically removed.
-Default is false. In the future this option may be replaced with `times` which specifies
+`once` specifies whether the handler should run only once: it is removed from the
+handler list right before it runs (so it runs at most once even if the event is
+re-emitted from inside a handler, and even if it raises). Default is false. In the future this option may be replaced with `times` which specifies
 how many times to run before being removed.
 
 As a convenience for adding handlers that should run only once, there is a method
@@ -377,7 +378,14 @@ my.emit ClickedEvent.new 10, 20
 ```
 
 The handler methods will always receive one argument - the event object
-with packed arguments. The return value from `emit` is that object.
+with packed arguments.
+
+The two forms that are given an event object return that object. The
+first form (event class followed by the arguments) returns `nil`: when
+nothing is subscribed it never builds the event object at all, and a return
+type that depends on whether anyone happens to be listening is not a usable
+contract. To get the event object back, construct it yourself and use one
+of the other two forms.
 
 ### Handling events
 
@@ -428,7 +436,9 @@ c = MyClass.new
 
 c.on(ClickedEvent) { |e| e.return_value += e.x + e.y }
 
-event = c.emit ClickedEvent, 1,2
+# `emit ClickedEvent, 1, 2` would return nil (see "Emitting events"), so
+# build the event first and emit the object.
+event = c.emit ClickedEvent, ClickedEvent.new(1, 2)
 p event.return_value #=> 3
 
 c.emit ClickedEvent, event

@@ -30,8 +30,9 @@ end
 
 my = My.new
 
-p my.emit(ClickedEvent, 1, 2).return_value # => 1
+# `emit(Type, args...)` returns nil, so build the events and emit the objects.
+p my.emit(ClickedEvent.new(1, 2)).return_value # => 1
 
-p my.emit(DoubleClickedEvent, 3, 4).return_value # => 2
+p my.emit(DoubleClickedEvent.new(3, 4)).return_value # => 2
 
-p my.emit(TripleClickedEvent, 7, 8, 9).return_value # => 3
+p my.emit(TripleClickedEvent.new(7, 8, 9)).return_value # => 3
