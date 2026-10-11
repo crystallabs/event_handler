@@ -83,35 +83,136 @@ module EventHandler
   end
 
   # :nodoc:
-  # EventHandler macro magic
+  # EventHandler macro magic.
+  #
+  # Handler storage is lazy and per emitter. Every `Event` subclass gets a
+  # compile-time index (its position in `names` below); an emitter carries a
+  # bitmask with one bit per index, plus a `Hash` from index to the handler
+  # list for that event, created on the first `on`. Nothing is allocated for
+  # event types an emitter never subscribes to, and the no-listener `emit`
+  # fast path is a single bit test. See `EventHandler::ErasedHandlers` for
+  # the store's element type and the typed views over it.
   macro finished
     \{% begin %}
-      \{% for e in ::EventHandler::Event.all_subclasses %}
-        \{% handlers_list = "_event_" + e.name.identify.underscore.tr("()", "__").stringify %}
-        \{% event_class = e.name.split('(').first.id %}
+      \{% names = ::EventHandler::Event.all_subclasses.map { |e| e.name.split('(').first }.uniq %}
+      \{% words = (names.size + 63) // 64 %}
 
-        # Handlers-list getter names for the three meta-event classes. Unlike
-        # `handlers_list`, these don't depend on `e`, so they're computed once
-        # here rather than recomputed inline at every use site. Same
-        # `name.identify.underscore.tr("()", "__")` transform as `handlers_list`,
-        # so names match the generated getters.
-        \{% add_handlers_list = "_event_" + ::EventHandler::AddHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
-        \{% remove_handlers_list = "_event_" + ::EventHandler::RemoveHandlerEvent.name.identify.underscore.tr("()", "__").stringify %}
-        \{% any_handlers_list = "_event_" + ::EventHandler::AnyEvent.name.identify.underscore.tr("()", "__").stringify %}
+      # Indices of the three meta-events, looked up once here.
+      \{% any_idx = nil %}
+      \{% add_idx = nil %}
+      \{% remove_idx = nil %}
+      \{% for name, idx in names %}
+        \{% any_idx = idx if name == ::EventHandler::AnyEvent.name.stringify %}
+        \{% add_idx = idx if name == ::EventHandler::AddHandlerEvent.name.stringify %}
+        \{% remove_idx = idx if name == ::EventHandler::RemoveHandlerEvent.name.stringify %}
+      \{% end %}
 
-        private getter \{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
+      # One bit per event type: set while this emitter holds at least one
+      # handler for it. Inline in the object (no allocation); `_emit`'s
+      # no-listener fast path reads it without taking the lock.
+      @_event_handler_bits = ::StaticArray(::UInt64, \{{ words }}).new(0_u64)
+
+      # The handler lists, keyed by event index, erased to a common element
+      # type (see `ErasedHandlers`). `nil` until the first `on`; never holds
+      # an empty list (the last `off` for a type removes its key), so a key's
+      # presence and its bit agree once a write completes.
+      #
+      # Readers (`_emit`) never lock. A key is added or removed by publishing
+      # a fresh `Hash` (copy-on-write at the map level, exactly as the lists
+      # themselves under `EMIT_COPY_ON_WRITE`); replacing the list of an
+      # existing key stores in place, which is a single reference store a
+      # reader observes either before or after. A reader may thus see the bit
+      # and the map momentarily disagree, so every lock-free lookup treats
+      # "key absent" as "no handlers" — the same benign race the bit already
+      # has (see `EMIT_SKIP_WHEN_NO_HANDLERS`).
+      @_event_handlers : ::Hash(::Int32, ::EventHandler::ErasedHandlers)?
+
+      # Whether this emitter has handlers for the event at *idx*. Inlined so
+      # that, with a literal *idx*, it folds into one load, mask and compare.
+      @[AlwaysInline]
+      private def _event_bit?(idx : ::Int32) : ::Bool
+        (@_event_handler_bits.unsafe_fetch(idx >> 6) & (1_u64 << (idx & 63))) != 0_u64
+      end
+
+      # Lock-free lookup of the erased handler list for *idx*, or `nil`.
+      private def _event_handlers_get(idx : ::Int32) : ::EventHandler::ErasedHandlers?
+        if store = @_event_handlers
+          store[idx]?
+        end
+      end
+
+      # Publishes *list* as the handler list for *idx*, or drops the key when
+      # *list* is empty. Caller holds `_event_handler_mutex`.
+      private def _event_handlers_set(idx : ::Int32, list : ::EventHandler::ErasedHandlers) : ::Nil
+        return _event_handlers_delete(idx) if list.empty?
+        store = @_event_handlers
+        if store && store.has_key?(idx)
+          # Existing key: a single reference store, no reallocation.
+          store[idx] = list
+        else
+          # New key: publish a fresh map so a lock-free reader never sees the
+          # map mid-rehash.
+          updated = store ? store.dup : ::Hash(::Int32, ::EventHandler::ErasedHandlers).new
+          updated[idx] = list
+          @_event_handlers = updated
+        end
+        @_event_handler_bits[idx >> 6] |= (1_u64 << (idx & 63))
+      end
+
+      # Drops the handler list for *idx*, if any. Caller holds
+      # `_event_handler_mutex`.
+      private def _event_handlers_delete(idx : ::Int32) : ::Nil
+        @_event_handler_bits[idx >> 6] &= ~(1_u64 << (idx & 63))
+        if (store = @_event_handlers) && store.has_key?(idx)
+          if store.size == 1
+            @_event_handlers = nil
+          else
+            updated = store.dup
+            updated.delete idx
+            @_event_handlers = updated
+          end
+        end
+      end
+
+      # The `Event` subclass registered at *idx*, for the whole-object
+      # `remove_all_handlers` to announce removals from an erased list.
+      private def _event_type_at(idx : ::Int32) : ::EventHandler::Event.class
+        case idx
+        \{% for name, idx in names %}
+        when \{{ idx }} then \{{ name.id }}
+        \{% end %}
+        else
+          raise ::IndexError.new("No event type at index #{idx}")
+        end
+      end
+
+      \{% for name, idx in names %}
+        \{% event_class = name.id %}
+        \{% handlers_list = "_event_" + name.identify.underscore %}
+        \{% typed_list = "::Array(::EventHandler::Wrapper(::Proc(#{event_class}, ::Nil)))".id %}
+
+        # Lock-free typed view of this emitter's handler list for
+        # `\{{ event_class }}`, or `nil` when it holds none. The stored list
+        # is the erased spelling of exactly this type (see `ErasedHandlers`),
+        # so the cast is a no-op.
+        private def \{{ handlers_list.id }} : \{{ typed_list }}?
+          if list = _event_handlers_get(\{{ idx }})
+            list.unsafe_as(\{{ typed_list }})
+          end
+        end
 
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
           _event_handler_mutex.synchronize do
+            current = \{{ handlers_list.id }}
             \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
               # Publish a fresh array so any in-flight `_emit` keeps iterating
               # its captured snapshot. See `EMIT_COPY_ON_WRITE`.
-              updated = \{{handlers_list.id}}.dup
-              updated.insert wrapper.at, wrapper
-              @\{{handlers_list.id}} = updated
+              updated = current ? current.dup : \{{ typed_list }}.new(1)
             \{% else %}
-              \{{handlers_list.id}}.insert wrapper.at, wrapper
+              updated = current || \{{ typed_list }}.new(1)
             \{% end %}
+            updated.insert wrapper.at, wrapper
+            _event_handlers_set \{{ idx }}, updated.unsafe_as(::EventHandler::ErasedHandlers)
           end
 
           # Only build+dispatch the `AddHandlerEvent` when something is listening
@@ -121,17 +222,11 @@ module EventHandler
           # allocate and immediately discard one. Same idea as the `AnyEvent`
           # guard in `emit`.
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            unless \{{add_handlers_list.id}}.empty?
+            if _event_bit?(\{{ add_idx }})
               _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
             end
           \{% else %}
-            # Use this:
             _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-
-            # Or this:
-            #handler2 = ::Proc(::EventHandler::Event,::Nil).new do |e| wrapper.handler.call e.as { {e.id}} end
-            #wrapper2 = ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)).new handler2, wrapper.once?, wrapper.async?, wrapper.at
-            #_emit ::EventHandler::AddHandlerEvent, type, wrapper2
           \{% end %}
 
           wrapper
@@ -283,7 +378,7 @@ module EventHandler
           # it — `_emit` would otherwise allocate it before its empty-list fast
           # path. Mirrors the `AddHandlerEvent` guard in `internal_insert`.
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            unless \{{remove_handlers_list.id}}.empty?
+            if _event_bit?(\{{ remove_idx }})
               _emit ::EventHandler::RemoveHandlerEvent, type, w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
             end
           \{% else %}
@@ -317,14 +412,15 @@ module EventHandler
         # correctness-sensitive logic so the overloads can't drift apart.
         private def _off_first(type : \{{event_class}}.class, &)
           w = _event_handler_mutex.synchronize {
-            if found = \{{handlers_list.id}}.find { |h| yield h }
+            if (list = \{{ handlers_list.id }}) && (found = list.find { |h| yield h })
               \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                updated = \{{handlers_list.id}}.dup
+                updated = list.dup
                 updated.delete found
-                @\{{handlers_list.id}} = updated
               \{% else %}
-                \{{handlers_list.id}}.delete found
+                updated = list
+                updated.delete found
               \{% end %}
+              _event_handlers_set \{{ idx }}, updated.unsafe_as(::EventHandler::ErasedHandlers)
               found
             end
           }
@@ -368,14 +464,15 @@ module EventHandler
           # no longer applies once compared against the erased type. Deleting by
           # index sidesteps both: no comparison, no type erasure.
           w = _event_handler_mutex.synchronize {
-            if found = \{{handlers_list.id}}[at]?
+            if (list = \{{ handlers_list.id }}) && (found = list[at]?)
               \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                updated = \{{handlers_list.id}}.dup
+                updated = list.dup
                 updated.delete_at at
-                @\{{handlers_list.id}} = updated
               \{% else %}
-                \{{handlers_list.id}}.delete_at at
+                updated = list
+                updated.delete_at at
               \{% end %}
+              _event_handlers_set \{{ idx }}, updated.unsafe_as(::EventHandler::ErasedHandlers)
               found
             end
           }
@@ -389,35 +486,29 @@ module EventHandler
         # If *emit* is true, a `RemoveHandlerEvent` is emitted once for every
         # distinct `Wrapper` object removed. See README for details.
         def remove_all_handlers(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
-          if emit
-            # Snapshot and clear the whole list in a single locked swap, then
-            # emit one `RemoveHandlerEvent` per distinct wrapper. Calling `off`
-            # once per wrapper instead would re-lock and rescan (or re-`dup`
-            # under copy-on-write) the entire array each time — O(n²). Clearing
-            # once is O(n).
-            removed = _event_handler_mutex.synchronize {
+          # Detach the whole list in a single locked pass, then emit one
+          # `RemoveHandlerEvent` per distinct wrapper. Calling `off` once per
+          # wrapper instead would re-lock and rescan (or re-`dup` under
+          # copy-on-write) the entire array each time — O(n²). Detaching once
+          # is O(n).
+          removed = _event_handler_mutex.synchronize {
+            if list = \{{ handlers_list.id }}
               \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                snapshot = \{{handlers_list.id}}
-                @\{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
+                # Drop the published list rather than emptying one a
+                # concurrent emit may be iterating.
+                snapshot = list
               \{% else %}
-                snapshot = \{{handlers_list.id}}.dup
-                \{{handlers_list.id}}.clear
+                snapshot = list.dup
+                list.clear
               \{% end %}
+              _event_handlers_delete \{{ idx }}
               snapshot
-            }
+            end
+          }
+          if emit && removed
             removed.uniq.each do |w|
               emit_remove_handler_event type, w
             end
-          else
-            _event_handler_mutex.synchronize {
-              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-                # Publish a fresh empty array rather than emptying one a
-                # concurrent emit may be iterating.
-                @\{{handlers_list.id}} = ::Array(Wrapper(::Proc(\{{event_class}}, ::Nil))).new
-              \{% else %}
-                \{{handlers_list.id}}.clear
-              \{% end %}
-            }
           end
           true
         end
@@ -426,32 +517,33 @@ module EventHandler
           remove_all_handlers type, emit
         end
 
-        # Returns the list of handlers for event *type*.
+        # Returns the list of handlers for event *type*; an empty array when
+        # none is installed.
         def handlers(type : \{{event_class}}.class)
           \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
             # Under copy-on-write, lock-free `_emit` relies on the published
             # array never being mutated in place. Hand back a `dup` so a caller
             # mutating the result can't corrupt an in-flight dispatch's snapshot.
-            \{{handlers_list.id}}.dup
+            \{{ handlers_list.id }}.try(&.dup) || \{{ typed_list }}.new
           \{% else %}
-            \{{handlers_list.id}}
+            \{{ handlers_list.id }} || \{{ typed_list }}.new
           \{% end %}
         end
 
         # Whether any handler is registered for *type*. Allocation-free
         # (unlike `handlers(type).any?`, which dups the COW list).
         def has_handlers?(type : \{{event_class}}.class) : Bool
-          !\{{handlers_list.id}}.empty?
+          _event_bit?(\{{ idx }})
         end
 
         # Low-level function used to execute handlers and almost nothing else.
         # Regular users should use `#emit` instead.
         protected def _emit(type : \{{event_class}}.class, event : \{{event_class}}, async : ::Bool? = nil)
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            # Fast path: with nothing subscribed, skip the mutex lock and the
-            # per-emit `dup` allocation entirely. See
+            # Fast path: with nothing subscribed, skip the store lookup (and,
+            # without copy-on-write, the lock and `dup`) entirely. See
             # `EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS`.
-            return event if \{{handlers_list.id}}.empty?
+            return event unless _event_bit?(\{{ idx }})
           \{% end %}
 
           # Snapshot the handler list, then invoke the handlers. Handlers may
@@ -471,10 +563,13 @@ module EventHandler
             # (e.g. x86-TSO) under multi-threading — same benign-race assumption
             # as the empty-list fast path above. Flip `EMIT_COPY_ON_WRITE` off
             # to restore the locked, `dup`-based read.
-            handlers = \{{handlers_list.id}}
+            handlers = \{{ handlers_list.id }}
           \{% else %}
-            handlers = _event_handler_mutex.synchronize { \{{handlers_list.id}}.dup }
+            handlers = _event_handler_mutex.synchronize { \{{ handlers_list.id }}.try &.dup }
           \{% end %}
+          # The bit may run ahead of the store (see `@_event_handlers`), or
+          # the fast path above may be compiled out: no list means no handlers.
+          return event unless handlers
 
           # Invokes all registered handlers.
           #
@@ -516,14 +611,14 @@ module EventHandler
         # When `EMIT_SKIP_WHEN_NO_HANDLERS`, `emit` gains a fast path: if neither
         # this concrete type nor the catch-all `AnyEvent` has any handler, it
         # returns immediately. It's `@[AlwaysInline]` so, in the common
-        # no-subscriber case, the guard folds into the caller as two
-        # `@size == 0` comparisons — no call into `_emit`, no lock, no
-        # allocation. With the constant off, neither the annotation nor the
+        # no-subscriber case, the guard folds into the caller as two bit tests
+        # on the emitter's subscription mask — no call into `_emit`, no lock,
+        # no allocation. With the constant off, neither the annotation nor the
         # guard is generated and `emit` is the original two-line dispatch.
         \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}@[AlwaysInline]\{% end %}
         def emit(type : \{{event_class}}.class, event : \{{event_class}})
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            return event if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
+            return event unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
 
             # Skip `AnyEvent` meta-dispatch when this event already IS
             # `AnyEvent`: `_emit(type, event)` below dispatches to the same
@@ -531,19 +626,19 @@ module EventHandler
             # handler twice and wrap the event in a doubly-nested `AnyEvent`.
             # Emitting an `AnyEvent` directly happens via the module-level
             # `emit(event)` helper when the event is itself an `AnyEvent`.
-            \{% if e != ::EventHandler::AnyEvent %}
+            \{% if idx != any_idx %}
               # Only dispatch to `AnyEvent` when something is listening: the
               # `_emit ::EventHandler::AnyEvent, event` call wraps the event in
               # a freshly-allocated `AnyEvent.new(event)` before `_emit` reaches
               # its empty-list fast path, so without this guard every emit with
               # concrete-type handlers but no `AnyEvent` listener would allocate
               # and immediately discard one.
-              _emit ::EventHandler::AnyEvent, event unless \{{any_handlers_list.id}}.empty?
+              _emit ::EventHandler::AnyEvent, event if _event_bit?(\{{ any_idx }})
             \{% end %}
           \{% else %}
             # Never re-dispatch `AnyEvent` to itself, or its handlers fire
             # twice (and receive a doubly-wrapped event).
-            \{% if e != ::EventHandler::AnyEvent %}
+            \{% if idx != any_idx %}
               _emit ::EventHandler::AnyEvent, event
             \{% end %}
           \{% end %}
@@ -567,7 +662,7 @@ module EventHandler
             # every frame with zero listeners in a typical app) would otherwise
             # heap-allocate an event immediately discarded. Guarding before
             # `.new` keeps that allocation off the hot path.
-            return if \{{handlers_list.id}}.empty? && \{{any_handlers_list.id}}.empty?
+            return unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
           \{% end %}
           event =  \{{event_class}}.new *args
           emit type, event
@@ -585,13 +680,43 @@ module EventHandler
       # nothing links them back here. Cancel those through the
       # `Subscription`/`Subscriptions` they returned.
       #
-      # *emit* controls `RemoveHandlerEvent` emission exactly as in
+      # *emit* controls `RemoveHandlerEvent` emission as in
       # `remove_all_handlers(type, emit)`; it defaults to off here, since a
-      # torn-down emitter has no use for the notifications.
+      # torn-down emitter has no use for the notifications. When on, the
+      # `RemoveHandlerEvent` listeners present at the call see every other
+      # type's removals first, and are then removed last — with nothing left
+      # to announce that to, exactly as `remove_all_handlers(RemoveHandlerEvent,
+      # true)` behaves.
+      #
+      # Without announcements this is a single lock, whatever the number of
+      # event types: the store is detached and the subscription mask zeroed
+      # in one pass.
       def remove_all_handlers(emit = false) : ::Nil
-        \{% for name in ::EventHandler::Event.all_subclasses.map { |e| e.name.split('(').first }.uniq %}
-          remove_all_handlers \{{ name.id }}, emit
-        \{% end %}
+        store = _event_handler_mutex.synchronize {
+          detached = @_event_handlers
+          @_event_handlers = nil
+          @_event_handler_bits = ::StaticArray(::UInt64, \{{ words }}).new(0_u64)
+          # Keep the announcement listeners installed until the end.
+          if emit && detached && (listeners = detached[\{{ remove_idx }}]?)
+            _event_handlers_set \{{ remove_idx }}, listeners
+          end
+          detached
+        }
+        return unless emit && store
+        store.each do |idx, list|
+          next if idx == \{{ remove_idx }}
+          type = _event_type_at idx
+          # The list is erased, but the announcement wants erased wrappers
+          # anyway (see `emit_remove_handler_event`); `uniq` compares by
+          # identity, which erasure preserves.
+          list.uniq.each do |w|
+            \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+              break unless _event_bit?(\{{ remove_idx }})
+            \{% end %}
+            _emit ::EventHandler::RemoveHandlerEvent, type, w
+          end
+        end
+        remove_all_handlers ::EventHandler::RemoveHandlerEvent, true
       end
 
     \{% end %}

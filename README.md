@@ -469,9 +469,17 @@ Under the default compile-time settings (`EMIT_COPY_ON_WRITE = true`),
 `handlers` returns a *copy* of the handler list — the published array must
 never be mutated in place, so a caller modifying the result cannot corrupt an
 in-flight dispatch (and cannot use it to add/remove handlers; use `on`/`off`).
-With copy-on-write disabled, it exposes the live Array, and modifying it
-directly modifies the handlers defined for the event — only to be done with
-due caution.
+With copy-on-write disabled, it exposes the live Array when one exists, and
+modifying it directly modifies the handlers defined for the event — only to be
+done with due caution. (An event type with no handlers installed has no list at
+all; see *Storage* below. `handlers` then returns a fresh, detached empty
+array.)
+
+To check for handlers without copying anything, use `has_handlers?`:
+
+```crystal
+my.has_handlers?(ClickedEvent) # => true/false, allocation-free
+```
 
 ### Removing event handlers
 
@@ -767,6 +775,26 @@ my = My.new
 p ClickedEvent.count #=> 4
 ```
 
+## Storage
+
+Handler lists are stored lazily, per emitter. Each `Event` subclass in the
+program gets a compile-time index; an emitter carries a small bitmask (one bit
+per event type, inline in the object) and a `Hash` from index to handler list
+that is only created on its first `on`. An emitter that never subscribes to an
+event type holds nothing for it, and the no-listener `emit` fast path is a
+single bit test. The last `off` for a type drops its list again, so
+`has_handlers?` is exact and allocation-free.
+
+This matters for programs with many emitters and many event types (a UI with
+thousands of widgets and a few hundred event classes): the alternative, one
+array per event type per emitter, costs a pointer per type in every object and
+an allocation per type at construction. `benchmarks/emitter-footprint.cr`
+measures the difference with 240 event types:
+
+```
+crystal run --release benchmarks/emitter-footprint.cr
+```
+
 ## Compile-time tuning
 
 Two performance optimizations are gated behind compile-time constants, both
@@ -782,8 +810,10 @@ end
 
 `EMIT_SKIP_WHEN_NO_HANDLERS` (default `true`)
 : `emit` returns immediately when an event has no handlers (for its type or the
-catch-all `AnyEvent`), skipping the lock and handler-array allocation. When
-`false`, every emit locks and dispatches unconditionally.
+catch-all `AnyEvent`), as a bit test on the emitter's subscription mask —
+skipping the store lookup, the lock and any event-object allocation. When
+`false`, every emit looks up (and, without copy-on-write, locks and copies) the
+handler list unconditionally.
 
 `EMIT_COPY_ON_WRITE` (default `true`)
 : The handler list is immutable: `on`/`off`/`remove_all_handlers` build and swap

@@ -39,6 +39,19 @@ module EventHandler
   # when disabled the copy-on-write code is not generated.
   EMIT_COPY_ON_WRITE = true
 
+  # :nodoc:
+  #
+  # Element type of the per-emitter handler store. An emitter keeps one
+  # `Hash(Int32, ErasedHandlers)` (created on its first `on`), keyed by each
+  # event type's compile-time index; the value is that type's
+  # `Array(Wrapper(Proc(Type, Nil)))`, stored under this common spelling. The
+  # cast is a no-op: every such array has the identical layout (a buffer of
+  # references), and the shard already hands `Wrapper`s to
+  # `AddHandlerEvent`/`RemoveHandlerEvent` listeners under the same erasure.
+  # A typed view back is only ever taken by the methods generated for that
+  # exact type.
+  alias ErasedHandlers = ::Array(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+
   @_event_handler_mutex = ::Mutex.new(:reentrant)
   private getter _event_handler_mutex
 
