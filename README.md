@@ -322,10 +322,20 @@ slot.off     # cancels; safe to call twice
 
 Several subscriptions torn down together can be collected in an
 `EventHandler::Subscriptions` bag: its `#on(target, type) { }` adds a tracked
-subscription (returned, so it can still be cancelled individually) and its
+subscription (returned, so it can still be cancelled individually), its
+`#add` tracks a subscription made elsewhere or a plain teardown block (a
+listener registered outside EventHandler, a timer, a file watcher), and its
 `#off` cancels every remaining one. Both classes also answer to
 `dispose`/`disposed?`, for callers whose teardown vocabulary comes from
 reactive stacks.
+
+```crystal
+subs = EventHandler::Subscriptions.new
+subs.on(my, ClickedEvent) { |e| p "Hello" }
+handle = Config.on_change("app.theme") { apply_theme }
+subs.add { Config.off_change "app.theme", handle }
+subs.off # cancels the handler and runs the teardown block, once
+```
 
 #### Event handler options
 

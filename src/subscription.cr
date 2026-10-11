@@ -77,7 +77,8 @@ module EventHandler
 
   # A bag of `Subscription`s that are torn down together. `#on` adds a tracked
   # subscription and returns it, so a single one can still be re-armed or
-  # cancelled individually; `#off` cancels every remaining one, idempotently.
+  # cancelled individually; `#add` tracks a subscription made elsewhere, or a
+  # plain teardown block; `#off` cancels every remaining one, idempotently.
   class Subscriptions
     @subs = [] of Subscription
 
@@ -89,6 +90,27 @@ module EventHandler
       s.on(target, type, once, async, at, &block)
       @subs << s
       s
+    end
+
+    # Tracks a teardown that is not an event subscription — a listener
+    # registered with a config option, a timer, a file watcher — so the bag's
+    # `#off` cancels it with the rest. *cancel* runs once, at the bag's `#off`
+    # or at the returned `Subscription`'s own, whichever comes first. Returns
+    # the created `Subscription`.
+    #
+    # ```
+    # handle = Config.on_change("app.theme") { apply_theme }
+    # subs.add { Config.off_change "app.theme", handle }
+    # ```
+    def add(&cancel : -> ::Nil) : Subscription
+      add Subscription.new(cancel)
+    end
+
+    # Tracks an existing *subscription*, such as one `EventHandler#on`
+    # returned, for the bag's bulk `#off`. Returns it.
+    def add(subscription : Subscription) : Subscription
+      @subs << subscription
+      subscription
     end
 
     # Cancels every tracked subscription and empties the bag. Idempotent.
