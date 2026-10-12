@@ -120,8 +120,9 @@ module EventHandler
       # Readers (`_emit`) never lock. A key is added or removed by publishing
       # a fresh `Hash` (copy-on-write at the map level, exactly as the lists
       # themselves under `EMIT_COPY_ON_WRITE`); replacing the list of an
-      # existing key stores in place, which is a single reference store a
-      # reader observes either before or after. A reader may thus see the bit
+      # existing key stores in place: the entry is rewritten with the same
+      # hash and key, so a reader observes only the list reference, either
+      # before or after the store. A reader may thus see the bit
       # and the map momentarily disagree, so every lock-free lookup treats
       # "key absent" as "no handlers" — the same benign race the bit already
       # has (see `EMIT_SKIP_WHEN_NO_HANDLERS`).
@@ -147,8 +148,10 @@ module EventHandler
         return _event_handlers_delete(idx) if list.empty?
         store = @_event_handlers
         if store && store.has_key?(idx)
-          # Existing key: a single reference store, no reallocation.
+          # Existing key: rewritten in place (same hash and key, the new
+          # list), no reallocation or rehash.
           store[idx] = list
+
         else
           # New key: publish a fresh map so a lock-free reader never sees the
           # map mid-rehash.
