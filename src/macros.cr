@@ -94,7 +94,12 @@ module EventHandler
   # the store's element type and the typed views over it.
   macro finished
     \{% begin %}
-      \{% names = ::EventHandler::Event.all_subclasses.map { |e| e.name.split('(').first }.uniq %}
+      \{% for e in ::EventHandler::Event.all_subclasses %}
+        \{% if e.name.includes?("(") %}
+          \{% raise "EventHandler: generic event classes are not supported (#{e.name}); define a concrete class per instantiation instead" %}
+        \{% end %}
+      \{% end %}
+      \{% names = ::EventHandler::Event.all_subclasses.map(&.name.stringify).uniq %}
       \{% words = (names.size + 63) // 64 %}
 
       # Indices of the three meta-events, looked up once here.
