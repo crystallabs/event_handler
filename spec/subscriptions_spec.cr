@@ -57,5 +57,18 @@ module EventHandler
       pings.should eq 1
       sub.active?.should be_false
     end
+
+    it "cancels every subscription even when a teardown raises, then re-raises" do
+      emitter = TestBag.new
+      bag = Subscriptions.new
+      bag.add { raise "teardown failed" }
+      sub = bag.on(emitter, PingEvent) { }
+      ex = expect_raises(Exception, "teardown failed") { bag.off }
+      ex.should be_a Exception
+      sub.active?.should be_false
+      emitter.has_handlers?(PingEvent).should be_false
+      bag.empty?.should be_true
+      bag.off # idempotent, nothing raises again
+    end
   end
 end

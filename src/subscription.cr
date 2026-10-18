@@ -117,9 +117,20 @@ module EventHandler
     end
 
     # Cancels every tracked subscription and empties the bag. Idempotent.
+    #
+    # Every subscription is cancelled even if one raises: the bag is emptied
+    # first, each remaining one is still torn down, and the first exception
+    # is re-raised at the end.
     def off : ::Nil
-      @subs.each &.off
-      @subs.clear
+      subs = @subs
+      @subs = [] of Subscription
+      first = nil
+      subs.each do |sub|
+        sub.off
+      rescue ex
+        first ||= ex
+      end
+      raise first if first
     end
 
     # `dispose`/`disposed?` aliases of `#off`/`#empty?`. See
