@@ -204,7 +204,18 @@ module EventHandler
           end
         end
 
+        \{% accepted = parse_type(name).resolve.ancestors.select { |a| a <= ::EventHandler::Event } %}
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+          # *wrapper* may have been built for another event (it arrives erased
+          # from `Subscription#wrapper` or a meta event, and `on(type, wrapper)`
+          # accepts any). Its handler must take `\{{ event_class }}`, so its
+          # event type must be this one or an ancestor; anything else would
+          # make `_emit` call a `Proc(Other, Nil)` with a `\{{ event_class }}`,
+          # which is memory-unsafe. One reference compare per candidate.
+          unless wrapper.event_type == \{{ event_class }}\{% for a in accepted %} || wrapper.event_type == \{{ a }}\{% end %}
+            raise ::ArgumentError.new("Wrapper for #{wrapper.event_type} cannot be registered for \{{ event_class }}")
+          end
+
           _event_handler_mutex.synchronize do
             current = \{{ handlers_list.id }}
             \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
@@ -214,7 +225,11 @@ module EventHandler
             \{% else %}
               updated = current || \{{ typed_list }}.new(1)
             \{% end %}
-            updated.insert wrapper.at, wrapper
+            # *wrapper* may statically be the erased spelling (the one
+            # `Subscription#wrapper` and `AddHandlerEvent` carry) or the
+            # concrete one; the list holds the concrete one (the cast is a
+            # no-op, and the check above makes it sound).
+            updated.insert wrapper.at, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)))
             _event_handlers_set \{{ idx }}, updated.unsafe_as(::EventHandler::ErasedHandlers)
           end
 
@@ -252,9 +267,8 @@ module EventHandler
         # kept those instead.
         def on(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil), once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end) : ::EventHandler::Subscription
           w = internal_insert type, handler, once, async, at
-          # Erased for the identity-matched `off(type, wrapper)` overload —
-          # the concrete-typed wrapper would fall through to the wipe-all
-          # `off(type, emit)` (see that overload's comment).
+          # Erased to the spelling `Subscription#wrapper` holds (the one
+          # `AddHandlerEvent`/`RemoveHandlerEvent` listeners also get).
           erased = w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
           ::EventHandler::Subscription.new(-> { off(type, erased); nil }, erased)
         end
@@ -263,12 +277,8 @@ module EventHandler
         # `ArgumentError` when the subscription carries no wrapper (see
         # `Subscription#wrapper`).
         def on(type : \{{event_class}}.class, subscription : ::EventHandler::Subscription) : ::EventHandler::Subscription
-          w = subscription.wrapper || raise ::ArgumentError.new("Subscription armed via #on carries no wrapper to re-register")
-          # Un-erase for insertion: `internal_insert` stores into the
-          # concrete-typed handler list, and instantiating it with the erased
-          # static type would not compile. The wrapper object itself IS the
-          # concrete one `on(type, handler)` built.
-          on type, w.unsafe_as(::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)))
+          w = subscription.wrapper || raise ::ArgumentError.new("Subscription holds no wrapper to re-register (empty slot or plain teardown block)")
+          on type, w
         end
         # Removes the handler behind *subscription* — the subscription-typed
         # spelling of `off(type, wrapper)`; returns the removed wrapper, or
@@ -281,7 +291,11 @@ module EventHandler
         def on(type : \{{event_class}}.class, *, once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, &handler : \{{event_class}} -> ::Nil) : ::EventHandler::Subscription
           on type, handler, once, async, at
         end
-        # :ditto:
+        # Adds *wrapper* (one `on` returned via `Subscription#wrapper`, one a
+        # meta event carried, or one built by hand) to the handlers for *type*,
+        # with the `once`/`async`/`at` settings it carries. Raises
+        # `ArgumentError` if the wrapper was built for an event its handler
+        # cannot take, i.e. one that is not *type* or an ancestor of it.
         def on(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil))) : ::EventHandler::Subscription
           internal_insert type, wrapper
           # Normalize to the erased spelling for storage on the Subscription:

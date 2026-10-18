@@ -24,8 +24,17 @@ module EventHandler
     getter? async : Bool
     getter at : Int32
 
+    # The event type the wrapped handler accepts: `Ev` for a
+    # `Wrapper(Proc(Ev, Nil))`. Kept in the object rather than derived from
+    # `T` because the wrapper is often held in the erased
+    # `Wrapper(Proc(Event, Nil))` spelling (`Subscription#wrapper`, the meta
+    # events), where `T` no longer tells; the generated `on(type, wrapper)`
+    # reads it to refuse a wrapper whose handler cannot take *type*.
+    getter event_type : ::EventHandler::Event.class
+
     def initialize(@handler : T, @once = false, @async = ::EventHandler.async?, @at = ::EventHandler.at_end, hash = nil)
       @handler_hash = hash || @handler.hash
+      @event_type = {{ T.type_vars.first.type_vars.first }}
     end
 
     def initialize(once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, hash = nil, &handler : T)
