@@ -11,11 +11,11 @@ my = My.new
 spawn do
   loop do
     my.emit(ClickedEvent, 1, 2)
-    sleep 0.2
+    sleep 0.2.seconds
   end
 end
 
-sleep 1
+sleep 1.second
 
 10.times do |i|
   my.wait(ClickedEvent) { |e| print i }

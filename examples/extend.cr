@@ -1,7 +1,7 @@
 require "../src/event_handler"
 
 macro extended_event(e, *args)
-  class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ *args }}{% end %}
+  class_record {{e.id}} < ::EventHandler::Event{% if args.size > 0 %}, {{ args.splat }}{% end %}
 
   class {{e.id}}::Subclass < {{e.id}}; end
 

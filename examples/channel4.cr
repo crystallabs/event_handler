@@ -13,7 +13,7 @@ ch = Channel(ClickedEvent).new
 spawn do
   p ch.receive
 end
-sleep 0.5
+sleep 0.5.seconds
 my.once(ClickedEvent) { |e| ch.send e }
 my.emit(ClickedEvent, 1, 2)
 

@@ -45,19 +45,19 @@ spawn do
   my.wait(ClickedEvent, ->on_clicked(ClickedEvent))
 end
 
-sleep 0.5
+sleep 0.5.seconds
 my.emit(ClickedEvent, 1, 2)
 
-sleep 0.5
+sleep 0.5.seconds
 my.emit(ClickedEvent, 1, 2)
 
-sleep 0.5
+sleep 0.5.seconds
 my.emit(ClickedEvent, 1, 2)
 
-sleep 0.5
+sleep 0.5.seconds
 my.emit(ClickedEvent, 1, 2)
 
-sleep 0.5
+sleep 0.5.seconds
 my.emit(ClickedEvent, 1, 2)
 
-sleep 0.5
+sleep 0.5.seconds

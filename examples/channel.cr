@@ -24,4 +24,4 @@ end
 my.emit(ClickedEvent, 1, 2)
 my.emit(ClickedEvent, 1, 2)
 
-sleep 1
+sleep 1.second

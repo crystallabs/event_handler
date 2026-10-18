@@ -18,4 +18,4 @@ my.on ClickedEvent, ch, async: true
 
 my.emit ClickedEvent, 1, 2
 
-sleep 1
+sleep 1.second
