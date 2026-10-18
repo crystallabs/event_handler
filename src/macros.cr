@@ -240,8 +240,12 @@ module EventHandler
             # *wrapper* may statically be the erased spelling (the one
             # `Subscription#wrapper` and `AddHandlerEvent` carry) or the
             # concrete one; the list holds the concrete one (the cast is a
-            # no-op, and the check above makes it sound).
-            updated.insert wrapper.at, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)))
+            # no-op, and the check above makes it sound). The position is
+            # clamped to the list's bounds: a wrapper's `at` is replayed on
+            # every registration, and the list may be shorter than when it
+            # was first inserted (or than the caller assumed).
+            at = wrapper.at.clamp(-(updated.size + 1), updated.size)
+            updated.insert at, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)))
             _event_handlers_set \{{ idx }}, updated.unsafe_as(::EventHandler::ErasedHandlers)
           end
 

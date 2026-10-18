@@ -109,13 +109,13 @@ module EventHandler
 
   # Default insertion index for a handler inserted at the beginning of the list; default 0.
   #
-  # Changing this can cause "Index out of bounds" exceptions if not done carefully;
-  # rarely needs changing.
+  # Rarely needs changing. An index is clamped to the handler list's bounds
+  # at insertion (see the *at* option).
   class_property at_beginning : Int32 = 0
 
   # Default insertion index for a handler inserted at the end of the list; default -1.
   #
-  # Changing this can cause "Index out of bounds" exceptions if not done carefully;
-  # rarely needs changing.
+  # Rarely needs changing. An index is clamped to the handler list's bounds
+  # at insertion (see the *at* option).
   class_property at_end : Int32 = -1
 end

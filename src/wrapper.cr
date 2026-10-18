@@ -11,12 +11,15 @@ module EventHandler
 
   # Generic class wrapping each installed handler.
   #
-  # Not generally used directly; implicitly created and returned by `on()`, and
-  # sent as an argument to emitted `AddHandlerEvent`/`RemoveHandlerEvent` events.
+  # Not generally used directly; implicitly created by `on()` (reachable as
+  # `Subscription#wrapper` on the subscription it returns), and sent as an
+  # argument to emitted `AddHandlerEvent`/`RemoveHandlerEvent` events.
   #
-  # Holds each handler's *once*, *async*, and *at* (initial insertion position
-  # in the handler list) settings. *at* is informational — mainly useful to
-  # check for 0 or -1, meaning insertion at the beginning or end of the list.
+  # Holds each handler's *once*, *async*, and *at* settings. *at* is the
+  # position the wrapper is inserted at in the handler list, on every
+  # registration (clamped to the list's bounds, so a position past the end
+  # means the end); mostly useful to check for 0 or -1, meaning the beginning
+  # or the end of the list.
   class Wrapper(T)
     getter handler : T
     getter handler_hash : UInt64
