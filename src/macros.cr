@@ -502,7 +502,7 @@ module EventHandler
         #
         # If *emit* is true, a `RemoveHandlerEvent` is emitted once for every
         # distinct `Wrapper` object removed. See README for details.
-        def remove_all_handlers(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
+        def remove_all_handlers(type : \{{event_class}}.class, emit : ::Bool = ::EventHandler.emit_on_remove_all?)
           # Detach the whole list in a single locked pass, then emit one
           # `RemoveHandlerEvent` per distinct wrapper. Calling `off` once per
           # wrapper instead would re-lock and rescan (or re-`dup` under
@@ -530,7 +530,9 @@ module EventHandler
           true
         end
         # :ditto:
-        def off(type : \{{event_class}}.class, emit = ::EventHandler.emit_on_remove_all?)
+        # *emit* is restricted to `Bool` so an argument of any other type is a
+        # compile error rather than a silent match of this wipe-all overload.
+        def off(type : \{{event_class}}.class, emit : ::Bool = ::EventHandler.emit_on_remove_all?)
           remove_all_handlers type, emit
         end
 
@@ -708,7 +710,7 @@ module EventHandler
       # Without announcements this is a single lock, whatever the number of
       # event types: the store is detached and the subscription mask zeroed
       # in one pass.
-      def remove_all_handlers(emit = false) : ::Nil
+      def remove_all_handlers(emit : ::Bool = false) : ::Nil
         store = _event_handler_mutex.synchronize {
           detached = @_event_handlers
           @_event_handlers = nil
