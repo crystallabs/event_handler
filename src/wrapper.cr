@@ -44,6 +44,14 @@ module EventHandler
       initialize handler, once, async, at, hash
     end
 
+    # A new wrapper around the same handler, with the same settings and
+    # `handler_hash`. Registrations are per wrapper object, so the clone is
+    # registered and removed independently of the original. Also what the
+    # `clone` of an `AddHandlerEvent`/`RemoveHandlerEvent` copies.
+    def clone : self
+      self.class.new(@handler, @once, @async, @at, @handler_hash)
+    end
+
     # Dispatches *obj* to the wrapped handler and returns *obj*.
     #
     # Handlers are `Proc(T, Nil)`, so their own return conveys nothing;
