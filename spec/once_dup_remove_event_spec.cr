@@ -25,8 +25,9 @@ module EventHandler
       c.on(OnceDupEvent, w)
       c.handlers(OnceDupEvent).size.should eq 2
 
-      # Synchronous emit (no fibers/channels): fires the once-handler in both
-      # slots, removing the wrapper entirely.
+      # Synchronous emit (no fibers/channels): the first slot's claim removes
+      # every copy of the wrapper, so it fires once and the second slot is
+      # skipped.
       c.emit OnceDupEvent, 1
 
       # The wrapper is fully gone...

@@ -8,12 +8,11 @@ module EventHandler
   end
 
   describe EventHandler do
-    # Fired once-handlers are removed in one batch after the dispatch loop, so
-    # while the remaining handlers run, a fired once-handler is still in the
-    # published list — and in the snapshot of any nested dispatch. A handler
-    # that re-emits the same event must not make the once-handler fire again:
-    # `_emit` claims each once-handler before running it, so the nested
-    # dispatch skips it.
+    # A fired once-handler is removed from the published list right before it
+    # runs, but it is still in the snapshot any nested dispatch took earlier.
+    # A handler that re-emits the same event must not make the once-handler
+    # fire again: `_emit` claims each once-handler by removing it before
+    # running it, so the nested dispatch finds nothing to claim and skips it.
     it "runs a once-handler exactly once when a later handler re-emits the event" do
       c = TestReentrantOnce.new
       seen = [] of Int32

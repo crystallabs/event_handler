@@ -23,6 +23,11 @@ end
 
 my = My.new
 
+# `emit type, *args` builds the event object only when something is
+# listening (see "Emitting events" in the README), so without a handler the
+# constructor below would never run and the count would stay 0.
+my.on(ClickedEvent) { }
+
 20.times { my.emit ClickedEvent, 1, 2 }
 
 p ClickedEvent.count # => 20

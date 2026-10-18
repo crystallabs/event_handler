@@ -11,8 +11,8 @@ x = X.new
 handler = ClickedEvent::Handler.new {
   true
 }
-wrapper = x.on ClickedEvent, handler
-x.on ClickedEvent, wrapper
+subscription = x.on ClickedEvent, handler
+x.on ClickedEvent, subscription # re-adds the same wrapper
 
 wrapper = ::EventHandler::Wrapper.new(handler)
 x.on ClickedEvent, wrapper

@@ -37,7 +37,11 @@ module EventHandler
       w.handler_hash
     end
 
-    # Whether a handler is currently installed.
+    # Whether this subscription still holds a cancel, i.e. has not been torn
+    # down through `#off`. It does not track the handler's presence on the
+    # emitter: a `once` handler that auto-fired, or one removed through
+    # `off(type, ...)`/`remove_all_handlers`, leaves the subscription active
+    # until its own `#off` (a no-op by then).
     def active? : Bool
       !@cancel.nil?
     end

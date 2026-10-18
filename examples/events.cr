@@ -40,7 +40,7 @@ c.on(::EventHandler::AnyEvent) { |e| p "AnyEvent: #{e.class} was emitted: #{e.in
 
 # And also the 4th time with options for *async*, *once*, and *at*.
 # *async* specifies whether event handler will be invoked in a `Fiber`.
-# *once* specifies whether event handler should only run once and then be removed, emitting `RemoveHandlerEvent` as usual.
+# *once* specifies whether event handler should run only once: it is removed (emitting `RemoveHandlerEvent` as usual) right before it runs.
 # *at* specifies the position in the array of existing handlers to insert the new handler into. Typical values are -1 to insert at the end, and 0 to insert at the beginning.
 
 c.on ClickedEvent, handler, async: true, once: true, at: -1

@@ -123,7 +123,8 @@ class ClickedEvent < EventHandler::Event
 end
 ```
 
-Or the whole event class can be created manually; it only needs to inherit from `EventHandler::Event`:
+Or the whole event class can be created manually; it only needs to inherit from `EventHandler::Event`
+(generic event classes are not supported and are rejected at compile time; define a concrete class per instantiation):
 
 ```crystal
 class ClickedEvent < EventHandler::Event
@@ -215,7 +216,7 @@ class MyClass
 end
 my = MyClass.new
 
-my.on ClickedEvent, ->my.on_clicked(ClickedEvent)
+my.on MyClass::ClickedEvent, ->my.on_clicked(MyClass::ClickedEvent)
 ```
 
 Using a handler "wrapper" object explicitly (otherwise it would be created and used implicitly):
@@ -286,6 +287,23 @@ my.on ClickedEvent, channel
 When `on` is invoked with a channel, it implicitly creates and
 adds an event handler which forwards received events into the channel.
 
+Every event also gets a subscribe method named after it, `on_<event>`, where
+`<event>` is the underscored last component of the event's class name. It takes
+the same keyword options as the block form of `on` and returns the same
+`Subscription`:
+
+```crystal
+my.on_clicked_event { |e| p "Hello" }
+my.on_clicked_event(once: true) { |e| p "Hello" }
+```
+
+The sugar is not generated when it would be ambiguous: for an event nested
+inside another event class (a generated `KeyPress::<key>` family, say), and
+when two event classes in different namespaces share a last name component
+(`::ClickedEvent` and `MyClass::ClickedEvent`). Subscribe to those with the
+explicit `on(Type) { }` form. An emitter may also define its own method of the
+same name, which then takes precedence over the generated one.
+
 #### Subscriptions
 
 Every form of `on` and `once` returns an `EventHandler::Subscription` — a
@@ -325,11 +343,13 @@ Several subscriptions torn down together can be collected in an
 subscription (returned, so it can still be cancelled individually), its
 `#add` tracks a subscription made elsewhere or a plain teardown block (a
 listener registered outside EventHandler, a timer, a file watcher), and its
-`#off` cancels every remaining one. Both classes also answer to
+`#off` cancels every remaining one (all of them even if a teardown raises; the
+first exception is re-raised afterwards). Both classes also answer to
 `dispose`/`disposed?`, for callers whose teardown vocabulary comes from
 reactive stacks.
 
 ```crystal
+# `Config` stands for any non-EventHandler API that hands out a teardown handle.
 subs = EventHandler::Subscriptions.new
 subs.on(my, ClickedEvent) { |e| p "Hello" }
 handle = Config.on_change("app.theme") { apply_theme }
@@ -339,7 +359,12 @@ subs.off # cancels the handler and runs the teardown block, once
 
 #### Event handler options
 
-All of the above methods for adding handlers support arguments `once`, `async`, and `at`.
+The block, Proc, and Channel forms of `on` accept the options `once`, `async`, and
+`at`. The wrapper and subscription forms take none: a `Wrapper` already carries
+its options (they are given to its constructor), and re-adding one registers it
+with those. A wrapper can only be registered for the event its handler accepts
+(the one it was built for, or a descendant of it); `on` raises `ArgumentError`
+otherwise.
 
 `once` specifies whether the handler should run only once: it is removed from the
 handler list right before it runs (so it runs at most once even if the event is
@@ -360,10 +385,23 @@ no specific value is provided, global default from `EventHandler.async` is used.
 Default (`EventHandler.async?`) is false. You can either modify this default,
 or specify `async` on a per-`on` basis.
 
+An exception raised by a synchronous handler propagates to the caller of
+`emit`. An asynchronous handler runs in its own Fiber, where there is no caller
+to propagate to; its exception is rescued and logged at `error` level through
+`EventHandler::Log` (`Log.for("event_handler")`), so it neither aborts the
+process nor affects other handlers. Per Crystal's `Log` conventions nothing is
+printed until the application configures a backend, e.g. with
+`Log.setup_from_env`.
+
 `at` specifies the index in the list of handlers where new handler should be inserted.
 While it is possible to specify the exact position, usually this value is
 `0` (`EventHandler.at_beginning`) to insert at the beginning or `-1` (`EventHandler.at_end`)
-to insert at the end of list. Default is `EventHandler.at_end`.
+to insert at the end of list. Default is `EventHandler.at_end`. The index is
+clamped to the list's bounds, so a position past either end means that end;
+a wrapper replays its `at` on every registration, including into a list that
+has since become shorter.
+
+In the block forms of `on`, `once`, and `wait`, the options are keyword-only.
 
 ### Emitting events
 
@@ -404,12 +442,12 @@ As mentioned, handlers always receive one argument - the event object with packe
 When an event is emitted using any of the available variants, such as:
 
 ```crystal
-my.emit ClickedEvent, x: 10, y: 20
+my.emit ClickedEvent, 10, 20
 ```
 
 The arguments are directly accessible as getters on the event object:
 
-```
+```crystal
 my.on ClickedEvent do |e|
   puts "Clicked on position x=#{e.x}, y=#{e.y}"
 end
@@ -560,8 +598,8 @@ If a handler is added to an event more than once, it will be necessary to call
 When handlers are added by using their wrappers directly, multiple identical
 wrapper objects will be present in the list.
 When `off()` is used to remove such handlers, all instances of their wrapper
-will be removed from the list (there will be more than one) and `RemoveHandlerEvent`
-will be invoked with the last removed instance as argument.
+will be removed from the list (there will be more than one) and a single
+`RemoveHandlerEvent` will be emitted with that wrapper as argument.
 
 Whether `off(Event, handler | hash)` should be removing handlers by
 wrapper (like it does now) or by handler, and whether `off()` should remove
@@ -591,6 +629,22 @@ provide argument *emit* to `off` or `remove_all_handlers`, or use
 `EventHandler.emit_on_remove_all?` and `EventHandler.emit_on_remove_all=`
 to change the default behavior.
 
+Every handler an emitter carries, for every event type, is removed by the
+argument-less form — the usual call when the emitter itself is being torn
+down:
+
+```crystal
+my.remove_all_handlers             # no RemoveHandlerEvents
+my.remove_all_handlers emit: true  # announce each removal
+```
+
+Here *emit* defaults to false regardless of `EventHandler.emit_on_remove_all?`,
+since a torn-down emitter rarely has a use for the notifications. With *emit*
+true, the `RemoveHandlerEvent` listeners present at the call see every other
+type's removals first and are removed last. Handlers this object registered on
+*other* emitters are unaffected; cancel those through the `Subscription`s they
+returned.
+
 ### Meta Events
 
 There are three built-in events:
@@ -599,12 +653,13 @@ There are three built-in events:
 
 `RemoveHandlerEvent` - Event emitted after a handler is removed from any event, including itself.
 
-`AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments.
+`AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments. It is not emitted for `AddHandlerEvent` and `RemoveHandlerEvent`, which reach only their own handlers, nor for an `AnyEvent` emitted directly.
 
 As mentioned, a wrapper object is implicitly created around a handler on every `on`, to encapsulate the handler and its
 subscription options (the values of `once?`, `async?`, and `at`).
-When `AddHandlerEvent` or `RemoveHandlerEvent` are emitted, they are invoked with the
-handlers' `Wrapper` object as argument.
+`AddHandlerEvent` and `RemoveHandlerEvent` carry two fields: `event`, the event
+*type* the handler was added to or removed from, and `wrapper`, the handler's
+`Wrapper` object.
 This allows listeners on these two meta events full insight into the added or removed handlers and their subscription data.
 
 ### Channels
@@ -679,7 +734,9 @@ e = my.wait(ClickedEvent)
 ```
 
 `wait` can also be invoked with code. The accepted syntax and
-arguments are the same as for `once`:
+arguments are the same as for `once` (minus the Channel form), plus
+*async_send*, which controls whether the implicit channel-forwarding handler
+runs in a Fiber (default `EventHandler.async_send?`, false):
 
 ```crystal
 # With a block
@@ -780,6 +837,10 @@ end
 class My; include EventHandler end
 my = My.new
 
+# `emit type, *args` builds the event only when something is listening
+# (see "Emitting events"), so a handler is needed for the count to move.
+my.on(ClickedEvent) { }
+
 4.times { my.emit ClickedEvent, 1, 2 }
 
 p ClickedEvent.count #=> 4
@@ -801,7 +862,7 @@ array per event type per emitter, costs a pointer per type in every object and
 an allocation per type at construction. `benchmarks/emitter-footprint.cr`
 measures the difference with 240 event types:
 
-```
+```sh
 crystal run --release benchmarks/emitter-footprint.cr
 ```
 

@@ -1,10 +1,11 @@
 module EventHandler
-  # These events are defined using `class_record` instead of the `event`
-  # macro due to: https://github.com/crystal-lang/crystal/issues/8463
-
   # Meta event, emitted on every other event.
   # Adding a handler for this event allows listening for all emitted events
   # and their arguments.
+  #
+  # Not emitted for the handler meta-events `AddHandlerEvent` and
+  # `RemoveHandlerEvent` (those are dispatched to their own handlers only),
+  # nor for an `AnyEvent` emitted directly.
   event AnyEvent,
     event : ::EventHandler::Event
 

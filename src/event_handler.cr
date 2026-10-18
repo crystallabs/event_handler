@@ -4,15 +4,16 @@ module EventHandler
   # Compile-time switch for the "skip emit when nothing is subscribed" fast path.
   #
   # When `true` (default), `emit`/`_emit` return immediately if the event has no
-  # registered handlers (neither its concrete type nor the catch-all `AnyEvent`),
-  # avoiding the per-emit reentrant-mutex lock and handler-array `dup`. Matters
-  # for emit-heavy workloads (e.g. a UI render loop) with no listeners.
+  # registered handlers (neither its concrete type nor the catch-all `AnyEvent`):
+  # the event object is not built, the handler store is not consulted and
+  # (without copy-on-write) the reentrant mutex is not taken. Matters for
+  # emit-heavy workloads (e.g. a UI render loop) with no listeners.
   #
-  # The fast path reads `Array#empty?` without holding the lock — a benign race
-  # already inherent to the snapshot design (a handler added concurrently with
-  # an emit isn't guaranteed to observe that emit). Set to `false` to restore
-  # unconditional locking; a compile-time constant so the guard generates no
-  # code at all when disabled.
+  # The fast path tests the emitter's subscription bitmask without holding the
+  # lock — a benign race already inherent to the snapshot design (a handler
+  # added concurrently with an emit isn't guaranteed to observe that emit). Set
+  # to `false` to restore unconditional dispatch; a compile-time constant so
+  # the guard generates no code at all when disabled.
   EMIT_SKIP_WHEN_NO_HANDLERS = true
 
   # Compile-time switch for copy-on-write handler lists.
@@ -95,9 +96,10 @@ module EventHandler
   # Only affects the default; can be overriden per-`#wait` via *async_send*.
   class_property? async_send : Bool = false
 
-  # `RemoveHandlerEvent` control flag for `#remove_all`; default true.
+  # `RemoveHandlerEvent` control flag for `remove_all_handlers(type)` and its
+  # `off(type)` alias; default true.
   #
-  # Controls whether handlers removed by `#remove_all` emit a
+  # Controls whether handlers removed by those calls emit a
   # `RemoveHandlerEvent`. Disabling can make sense at application shutdown when
   # running those handlers no longer matters.
   #
