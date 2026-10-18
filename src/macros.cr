@@ -107,6 +107,18 @@ module EventHandler
         \{% remove_idx = idx if name == ::EventHandler::RemoveHandlerEvent.name.stringify %}
       \{% end %}
 
+      # Candidate `on_<event>` sugar names (see the per-event section): one
+      # per event not nested inside another event class. A name listed more
+      # than once is ambiguous and gets no sugar.
+      \{% sugar_names = [] of ::String %}
+      \{% for name in names %}
+        \{% enclosing = name.split("::")[0..-2].join("::") %}
+        \{% enclosing_type = enclosing.empty? ? nil : parse_type(enclosing).resolve? %}
+        \{% unless enclosing_type && enclosing_type < ::EventHandler::Event %}
+          \{% sugar_names << "on_" + name.split("::").last.underscore %}
+        \{% end %}
+      \{% end %}
+
       # One bit per event type: set while this emitter holds at least one
       # handler for it. Inline in the object (no allocation); `_emit`'s
       # no-listener fast path reads it without taking the lock.
@@ -323,10 +335,12 @@ module EventHandler
         # is ambiguous there — it can collide with an unrelated top-level
         # event of the same name — and such families are typically generated
         # and huge. Subscribe to those with the explicit `on(Type) { }` form.
-        \{% enclosing = event_class.stringify.split("::")[0..-2].join("::") %}
-        \{% enclosing_type = enclosing.empty? ? nil : parse_type(enclosing).resolve? %}
-        \{% unless enclosing_type && enclosing_type < ::EventHandler::Event %}
-          \{% sugar_name = "on_" + event_class.stringify.split("::").last.underscore %}
+        #
+        # Also skipped when two event classes in different namespaces share a
+        # last name component (`::Clicked` and `Foo::Clicked`): both would
+        # define the same method and the later one would silently win.
+        \{% sugar_name = "on_" + name.split("::").last.underscore %}
+        \{% if sugar_names.select { |n| n == sugar_name }.size == 1 %}
           # Options are keyword-only (bare `*`, like the block overload of
           # `on`): with untyped positionals an emitter's own same-name sugar
           # taking positional args (e.g. Crysterm's `on_key('q', :escape)`)
