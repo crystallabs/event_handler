@@ -1,5 +1,5 @@
 module EventHandler
-  VERSION = "2.4.1"
+  VERSION = "2.5.0"
 
   # Compile-time switch for the "skip emit when nothing is subscribed" fast path.
   #
