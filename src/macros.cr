@@ -78,8 +78,20 @@ module EventHandler
   # ```
   # event MouseClick, x : ::Int32, y : ::Int32
   # ```
-  macro event(e, *args)
-    class_record {{ e.id }} < ::EventHandler::Event{% if args.size > 0 %}, {{ args.splat }}{% end %}
+  #
+  # A block, if given, becomes part of the class body:
+  #
+  # ```
+  # event MouseClick, x : ::Int32, y : ::Int32 do
+  #   def origin?
+  #     x == 0 && y == 0
+  #   end
+  # end
+  # ```
+  macro event(e, *args, &block)
+    class_record {{ e.id }} < ::EventHandler::Event{% if args.size > 0 %}, {{ args.splat }}{% end %}{% if block %} do
+      {{ block.body }}
+    end{% end %}
   end
 
   # :nodoc:
@@ -98,7 +110,11 @@ module EventHandler
         \{% if e.name.includes?("(") %}
           \{% raise "EventHandler: generic event classes are not supported (#{e.name}); define a concrete class per instantiation instead" %}
         \{% end %}
+        \{% if e.private? %}
+          \{% raise "EventHandler: private event classes are not supported (#{e.name}); the generated emitter methods must be able to name every event class" %}
+        \{% end %}
       \{% end %}
+      \{% types = ::EventHandler::Event.all_subclasses %}
       \{% names = ::EventHandler::Event.all_subclasses.map(&.name.stringify).uniq %}
       \{% words = (names.size + 63) // 64 %}
 
@@ -118,8 +134,7 @@ module EventHandler
       \{% sugar_names = [] of ::String %}
       \{% for name in names %}
         \{% enclosing = name.split("::")[0..-2].join("::") %}
-        \{% enclosing_type = enclosing.empty? ? nil : parse_type(enclosing).resolve? %}
-        \{% unless enclosing_type && enclosing_type < ::EventHandler::Event %}
+        \{% unless !enclosing.empty? && names.includes?(enclosing) %}
           \{% sugar_names << "on_" + name.split("::").last.underscore %}
         \{% end %}
       \{% end %}
@@ -134,16 +149,16 @@ module EventHandler
       # an empty list (the last `off` for a type removes its key), so a key's
       # presence and its bit agree once a write completes.
       #
-      # Readers (`_emit`) never lock. A key is added or removed by publishing
-      # a fresh `Hash` (copy-on-write at the map level, exactly as the lists
-      # themselves under `EMIT_COPY_ON_WRITE`); replacing the list of an
-      # existing key stores in place: the entry is rewritten with the same
-      # hash and key, so a reader observes only the list reference, either
-      # before or after the store. A reader may thus see the bit
-      # and the map momentarily disagree, so every lock-free lookup treats
-      # "key absent" as "no handlers" — the same benign race the bit already
-      # has (see `EMIT_SKIP_WHEN_NO_HANDLERS`).
-      @_event_handlers : ::Hash(::Int32, ::EventHandler::ErasedHandlers)?
+      # Readers (`_emit`) never lock, and may run on another thread in
+      # parallel with a writer. The map is therefore immutable once
+      # published: every change builds a fresh `Hash` under the lock and
+      # publishes it with a release store, which a reader picks up with an
+      # acquire load — so a reader only ever sees a fully built map (and,
+      # through it, fully built lists), on any target. A reader may still
+      # see the bit and the map momentarily disagree, so every lock-free
+      # lookup treats "key absent" as "no handlers" — the same benign race
+      # the bit already has (see `EMIT_SKIP_WHEN_NO_HANDLERS`).
+      @_event_handlers = ::Atomic(::Hash(::Int32, ::EventHandler::ErasedHandlers)?).new(nil)
 
       # Whether this emitter has handlers for the event at *idx*. Inlined so
       # that, with a literal *idx*, it folds into one load, mask and compare.
@@ -154,7 +169,7 @@ module EventHandler
 
       # Lock-free lookup of the erased handler list for *idx*, or `nil`.
       private def _event_handlers_get(idx : ::Int32) : ::EventHandler::ErasedHandlers?
-        if store = @_event_handlers
+        if store = @_event_handlers.get(:acquire)
           store[idx]?
         end
       end
@@ -163,19 +178,17 @@ module EventHandler
       # *list* is empty. Caller holds `_event_handler_mutex`.
       private def _event_handlers_set(idx : ::Int32, list : ::EventHandler::ErasedHandlers) : ::Nil
         return _event_handlers_delete(idx) if list.empty?
-        store = @_event_handlers
-        if store && store.has_key?(idx)
-          # Existing key: rewritten in place (same hash and key, the new
-          # list), no reallocation or rehash.
-          store[idx] = list
-
-        else
-          # New key: publish a fresh map so a lock-free reader never sees the
-          # map mid-rehash.
-          updated = store ? store.dup : ::Hash(::Int32, ::EventHandler::ErasedHandlers).new
-          updated[idx] = list
-          @_event_handlers = updated
-        end
+        store = @_event_handlers.get(:acquire)
+        \{% unless ::EventHandler::EMIT_COPY_ON_WRITE %}
+          # Without copy-on-write the list is mutated in place (readers lock),
+          # so an already-published list needs no new map.
+          return if store && store[idx]?.same?(list)
+        \{% end %}
+        # Never written in place: a lock-free reader, possibly on another
+        # thread, may be reading the published map.
+        updated = store ? store.dup : ::Hash(::Int32, ::EventHandler::ErasedHandlers).new
+        updated[idx] = list
+        @_event_handlers.set(updated, :release)
         @_event_handler_bits[idx >> 6] |= (1_u64 << (idx & 63))
       end
 
@@ -183,23 +196,43 @@ module EventHandler
       # `_event_handler_mutex`.
       private def _event_handlers_delete(idx : ::Int32) : ::Nil
         @_event_handler_bits[idx >> 6] &= ~(1_u64 << (idx & 63))
-        if (store = @_event_handlers) && store.has_key?(idx)
+        if (store = @_event_handlers.get(:acquire)) && store.has_key?(idx)
           if store.size == 1
-            @_event_handlers = nil
+            @_event_handlers.set(nil, :release)
           else
             updated = store.dup
             updated.delete idx
-            @_event_handlers = updated
+            @_event_handlers.set(updated, :release)
           end
         end
       end
+
+      \{% unless ::EventHandler::EMIT_COPY_ON_WRITE %}
+        # Without copy-on-write the lists are mutated in place, so a copy of
+        # the emitter must not share them (nor the lock guarding them) with
+        # the original. Under copy-on-write nothing published is ever
+        # mutated, so a plain shallow copy is already independent.
+        def dup
+          copy = super
+          copy._event_handler_detach
+          copy
+        end
+
+        # :nodoc:
+        protected def _event_handler_detach : ::Nil
+          @_event_handler_mutex = ::Mutex.new(:reentrant)
+          if store = @_event_handlers.get(:acquire)
+            @_event_handlers.set(store.transform_values(&.dup), :release)
+          end
+        end
+      \{% end %}
 
       # The `Event` subclass registered at *idx*, for the whole-object
       # `remove_all_handlers` to announce removals from an erased list.
       private def _event_type_at(idx : ::Int32) : ::EventHandler::Event.class
         case idx
         \{% for name, idx in names %}
-        when \{{ idx }} then \{{ name.id }}
+        when \{{ idx }} then ::\{{ name.id }}
         \{% end %}
         else
           raise ::IndexError.new("No event type at index #{idx}")
@@ -207,8 +240,13 @@ module EventHandler
       end
 
       \{% for name, idx in names %}
-        \{% event_class = name.id %}
-        \{% handlers_list = "_event_" + name.identify.underscore %}
+        # Spelled from the top level: this code expands inside `EventHandler`,
+        # where a bare `Event`/`Wrapper`/`Subscription`/... would bind to the
+        # shard's own constant instead of a same-named user event.
+        \{% event_class = ("::" + name).id %}
+        # Named by index: unique, unlike anything derived from the class name
+        # (`HTTPEvent` and `HttpEvent` underscore identically).
+        \{% handlers_list = "_event_list_" + idx.stringify %}
         \{% typed_list = "::Array(::EventHandler::Wrapper(::Proc(#{event_class}, ::Nil)))".id %}
 
         # Lock-free typed view of this emitter's handler list for
@@ -221,7 +259,7 @@ module EventHandler
           end
         end
 
-        \{% accepted = parse_type(name).resolve.ancestors.select { |a| a <= ::EventHandler::Event } %}
+        \{% accepted = types.find { |t| t.name.stringify == name }.ancestors.select { |a| a <= ::EventHandler::Event } %}
         private def internal_insert(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
           # *wrapper* may have been built for another event (it arrives erased
           # from `Subscription#wrapper` or a meta event, and `on(type, wrapper)`
@@ -229,8 +267,8 @@ module EventHandler
           # event type must be this one or an ancestor; anything else would
           # make `_emit` call a `Proc(Other, Nil)` with a `\{{ event_class }}`,
           # which is memory-unsafe. One reference compare per candidate.
-          unless wrapper.event_type == \{{ event_class }}\{% for a in accepted %} || wrapper.event_type == \{{ a }}\{% end %}
-            raise ::ArgumentError.new("Wrapper for #{wrapper.event_type} cannot be registered for \{{ event_class }}")
+          unless wrapper.event_type == \{{ event_class }}\{% for a in accepted %} || wrapper.event_type == ::\{{ a }}\{% end %}
+            raise ::ArgumentError.new("Wrapper for #{wrapper.event_type} cannot be registered for \{{ name.id }}")
           end
 
           _event_handler_mutex.synchronize do
@@ -260,21 +298,54 @@ module EventHandler
           # empty-list fast path, so without this guard every `on()` would
           # allocate and immediately discard one. Same idea as the `AnyEvent`
           # guard in `emit`.
-          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
-            if _event_bit?(\{{ add_idx }})
+          #
+          # If an `AddHandlerEvent` listener raises, the registration is
+          # undone before the exception propagates: the caller never receives
+          # the `Subscription`, so nothing could remove the handler otherwise
+          # (and a `wait` would leave its channel handler behind, blocking the
+          # next `emit` on a send nobody receives).
+          if \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}_event_bit?(\{{ add_idx }})\{% else %}true\{% end %}
+            begin
               _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+            rescue ex
+              begin
+                _rollback_insert \{{ event_class }}, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)))
+              rescue
+                # The original failure is the one to report.
+              end
+              raise ex
             end
-          \{% else %}
-            _emit ::EventHandler::AddHandlerEvent, type, wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          \{% end %}
+          end
 
           wrapper
+        end
+
+        # Undoes one `internal_insert` of *w* (a single copy, should the
+        # wrapper be registered more than once) and announces the removal to
+        # the `RemoveHandlerEvent` listeners, which may already have seen the
+        # matching `AddHandlerEvent`.
+        private def _rollback_insert(type : \{{event_class}}.class, w : ::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil))) : ::Nil
+          removed = _event_handler_mutex.synchronize {
+            if (list = \{{ handlers_list.id }}) && (i = list.index { |h| h.same?(w) })
+              \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+                updated = list.dup
+              \{% else %}
+                updated = list
+              \{% end %}
+              updated.delete_at i
+              _event_handlers_set \{{ idx }}, updated.unsafe_as(::EventHandler::ErasedHandlers)
+              true
+            end
+          }
+          emit_remove_handler_event type, w if removed
         end
         private def internal_insert(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil), once : ::Bool, async : ::Bool, at : ::Int)
           internal_insert(type, wrapper(type, handler, once, async, at))
         end
         private def wrapper(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil), once : ::Bool, async : ::Bool, at : ::Int)
-          ::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)).new handler, once, async, at
+          # `Wrapper#at` is an `Int32`; any other integer is clamped into its
+          # range (the position is clamped to the list's bounds anyway).
+          ::EventHandler::Wrapper(::Proc(\{{event_class}}, ::Nil)).new handler, once, async, at.clamp(::Int32::MIN, ::Int32::MAX).to_i32
         end
 
         # Adds *handler* to the list of handlers for event *type*.
@@ -291,7 +362,7 @@ module EventHandler
           # Erased to the spelling `Subscription#wrapper` holds (the one
           # `AddHandlerEvent`/`RemoveHandlerEvent` listeners also get).
           erased = w.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          ::EventHandler::Subscription.new(-> { off(type, erased); nil }, erased)
+          ::EventHandler::Subscription.new(-> { off(type, erased); nil }, erased, -> { has_handler?(type, erased) })
         end
         # Re-registers the `Wrapper` behind *subscription* — the
         # subscription-typed spelling of `on(type, wrapper)`. Raises
@@ -324,7 +395,7 @@ module EventHandler
           # may statically be the concrete `Wrapper(Proc(\{{event_class}}, Nil))`
           # here, which the erased-typed `Subscription#wrapper` slot rejects.
           erased = wrapper.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
-          ::EventHandler::Subscription.new(-> { off(type, erased); nil }, erased)
+          ::EventHandler::Subscription.new(-> { off(type, erased); nil }, erased, -> { has_handler?(type, erased) })
         end
         # Adds an autogenerated handler which sends emitted events to *channel*
         def on(type : \{{event_class}}.class, channel : ::Channel(\{{event_class}}), once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end) : ::EventHandler::Subscription
@@ -387,6 +458,11 @@ module EventHandler
         #
         # *handler* may be `nil`, in which case `wait` blocks until the event
         # arrives and returns it without running any handler.
+        #
+        # The wait ends only when the event is emitted: if its implicit
+        # handler is removed first (`remove_all_handlers`, `off(type)`), the
+        # waiting fiber stays parked. Tear down an emitter that may have
+        # waiters only after they have been released.
         def wait(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil)?, async = ::EventHandler.async?, at = ::EventHandler.at_end, async_send = ::EventHandler.async_send?)
           channel = ::Channel(\{{event_class}}).new
           once type, channel, async_send, at
@@ -475,7 +551,11 @@ module EventHandler
 
         # Removes *handler* from the list of handlers for event *type*.
         def off(type : \{{event_class}}.class, handler : ::Proc(\{{event_class}}, ::Nil))
-          _off_first(type) { |h| h.handler == handler }
+          # Compared by code pointer and closure data rather than `==`:
+          # *handler* may be typed for an ancestor event (`Proc(Base, Nil)`
+          # registered on a derived event), and `Proc#==` is false across
+          # different `Proc` types even for the very same proc.
+          _off_first(type) { |h| h.handler.pointer == handler.pointer && h.handler.closure_data == handler.closure_data }
         end
         # :ditto:
         def off(type : \{{event_class}}.class, hash : ::UInt64)
@@ -545,7 +625,9 @@ module EventHandler
               snapshot
             end
           }
-          if emit && removed
+          # Nothing to announce to (and no `uniq` to build) without a
+          # `RemoveHandlerEvent` listener.
+          if emit && removed\{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %} && _event_bit?(\{{ remove_idx }})\{% end %}
             removed.uniq.each do |w|
               emit_remove_handler_event type, w
             end
@@ -572,6 +654,26 @@ module EventHandler
           \{% end %}
         end
 
+        # Whether *wrapper* is currently registered for *type* (compared by
+        # identity). This is what `Subscription#live?` asks.
+        def has_handler?(type : \{{event_class}}.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil))) : ::Bool
+          \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+            if list = \{{ handlers_list.id }}
+              list.any? &.same?(wrapper)
+            else
+              false
+            end
+          \{% else %}
+            _event_handler_mutex.synchronize {
+              if list = \{{ handlers_list.id }}
+                list.any? &.same?(wrapper)
+              else
+                false
+              end
+            }
+          \{% end %}
+        end
+
         # Whether any handler is registered for *type*. Allocation-free
         # (unlike `handlers(type).any?`, which dups the COW list).
         def has_handlers?(type : \{{event_class}}.class) : Bool
@@ -592,19 +694,17 @@ module EventHandler
           # call `on`/`off`/`emit` or block on a `Channel`, so the list is never
           # iterated while a lock is held — that would deadlock.
           \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
-            # Lock-free read. Under copy-on-write the array is never mutated in
-            # place, so capturing the snapshot is a single atomic pointer load.
-            # A concurrent writer publishes a brand-new array (under the write
-            # lock) and swaps the reference; we keep iterating the array we
-            # captured, which no one mutates. The mutex only serializes writers
-            # against each other, not this read.
+            # Lock-free read. Under copy-on-write neither the map nor the array
+            # is ever mutated once published, so capturing the snapshot is one
+            # acquire load of the map plus a lookup. A concurrent writer — on
+            # this thread or another — publishes a brand-new map and array
+            # (under the write lock, with a release store); we keep iterating
+            # the array we captured, which no one mutates. The mutex only
+            # serializes writers against each other, not this read.
             #
-            # Assumes the writer's reference-publishing store is visible here:
-            # trivially true on the single-threaded fiber scheduler (writers
-            # never yield mid-swap), and holds on strongly-ordered targets
-            # (e.g. x86-TSO) under multi-threading — same benign-race assumption
-            # as the empty-list fast path above. Flip `EMIT_COPY_ON_WRITE` off
-            # to restore the locked, `dup`-based read.
+            # A handler added in parallel with this emit may or may not be
+            # seen by it — the same benign race as the fast path above. Flip
+            # `EMIT_COPY_ON_WRITE` off for a locked, `dup`-based read.
             handlers = \{{ handlers_list.id }}
           \{% else %}
             handlers = _event_handler_mutex.synchronize { \{{ handlers_list.id }}.try &.dup }
@@ -636,7 +736,10 @@ module EventHandler
           # `_off_first`, outside the lock, before the handler runs.
           handlers.each do |handler|
             if handler.once?
-              next unless _off_first(type) { |h| h.same?(handler) }
+              # The list is named by its class, not by *type*: this method
+              # also serves `emit(Derived, base_event)`, where *type* would
+              # look for the handler in the derived event's list.
+              next unless _off_first(\{{ event_class }}) { |h| h.same?(handler) }
             end
             handler.call(event, async)
           end
@@ -684,7 +787,7 @@ module EventHandler
               _emit ::EventHandler::AnyEvent, event
             \{% end %}
           \{% end %}
-          _emit(type, event)
+          _emit(\{{ event_class }}, event)
         end
         # :ditto:
         #
@@ -706,11 +809,67 @@ module EventHandler
             # `.new` keeps that allocation off the hot path.
             return unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
           \{% end %}
-          event =  \{{event_class}}.new *args
-          emit type, event
+          event = \{{event_class}}.new *args
+          emit \{{ event_class }}, event
         end
 
       \{% end %}
+
+      # Forms taking an event type only known at run time — an
+      # `Event.class` such as `AddHandlerEvent#event`, or the class of an
+      # event held as a plain `Event` (an `Array(Event)` element,
+      # `AnyEvent#event`). The per-type overloads above are more specific
+      # and win whenever the type is known at compile time; these dispatch
+      # on the actual class.
+
+      # Fallback of `emit(type, event)`: reached only when *event* is not a
+      # *type* (every matching pair resolves to a per-type overload).
+      def emit(type : ::EventHandler::Event.class, event : ::EventHandler::Event)
+        raise ::ArgumentError.new("Cannot emit #{event.class} as #{type}")
+      end
+
+      # :ditto:
+      def on(type : ::EventHandler::Event.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil))) : ::EventHandler::Subscription
+        \{% for name in names %}
+          return on(::\{{ name.id }}, wrapper) if type == ::\{{ name.id }}
+        \{% end %}
+        raise ::ArgumentError.new("Unknown event type #{type}")
+      end
+
+      # :ditto:
+      def off(type : ::EventHandler::Event.class, wrapper : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil))) : ::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil))?
+        \{% for name in names %}
+          if type == ::\{{ name.id }}
+            return off(::\{{ name.id }}, wrapper).try &.unsafe_as(::EventHandler::Wrapper(::Proc(::EventHandler::Event, ::Nil)))
+          end
+        \{% end %}
+        raise ::ArgumentError.new("Unknown event type #{type}")
+      end
+
+      # :ditto:
+      def has_handlers?(type : ::EventHandler::Event.class) : ::Bool
+        \{% for name, idx in names %}
+          return _event_bit?(\{{ idx }}) if type == ::\{{ name.id }}
+        \{% end %}
+        raise ::ArgumentError.new("Unknown event type #{type}")
+      end
+
+      # :ditto:
+      #
+      # The list comes in the erased `Wrapper(Proc(Event, Nil))` spelling,
+      # the one `Subscription#wrapper` and the meta events use.
+      def handlers(type : ::EventHandler::Event.class) : ::EventHandler::ErasedHandlers
+        \{% for name, idx in names %}
+          if type == ::\{{ name.id }}
+            \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+              return _event_handlers_get(\{{ idx }}).try(&.dup) || ::EventHandler::ErasedHandlers.new
+            \{% else %}
+              return _event_handlers_get(\{{ idx }}) || ::EventHandler::ErasedHandlers.new
+            \{% end %}
+          end
+        \{% end %}
+        raise ::ArgumentError.new("Unknown event type #{type}")
+      end
 
       # Removes every handler this emitter carries, for every event type — the
       # whole-object counterpart of `remove_all_handlers(type)`. Use it when the
@@ -735,8 +894,7 @@ module EventHandler
       # in one pass.
       def remove_all_handlers(emit : ::Bool = false) : ::Nil
         store = _event_handler_mutex.synchronize {
-          detached = @_event_handlers
-          @_event_handlers = nil
+          detached = @_event_handlers.swap(nil)
           @_event_handler_bits = ::StaticArray(::UInt64, \{{ words }}).new(0_u64)
           # Keep the announcement listeners installed until the end.
           if emit && detached && (listeners = detached[\{{ remove_idx }}]?)
@@ -747,6 +905,10 @@ module EventHandler
         return unless emit && store
         store.each do |idx, list|
           next if idx == \{{ remove_idx }}
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            # No listener (left): nothing to announce, no `uniq` to build.
+            break unless _event_bit?(\{{ remove_idx }})
+          \{% end %}
           type = _event_type_at idx
           # The list is erased, but the announcement wants erased wrappers
           # anyway (see `emit_remove_handler_event`); `uniq` compares by

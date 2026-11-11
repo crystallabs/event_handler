@@ -37,7 +37,10 @@ module EventHandler
 
     def initialize(@handler : T, @once = false, @async = ::EventHandler.async?, @at = ::EventHandler.at_end, hash = nil)
       @handler_hash = hash || @handler.hash
-      @event_type = {{ T.type_vars.first.type_vars.first }}
+      # Spelled from the top level: a bare name would be looked up inside
+      # `EventHandler` first and bind a user event called `Event`,
+      # `Wrapper`, ... to the shard's own constant.
+      @event_type = {{ ("::" + T.type_vars.first.type_vars.first.stringify).id }}
     end
 
     def initialize(once = false, async = ::EventHandler.async?, at = ::EventHandler.at_end, hash = nil, &handler : T)
@@ -48,8 +51,13 @@ module EventHandler
     # `handler_hash`. Registrations are per wrapper object, so the clone is
     # registered and removed independently of the original. Also what the
     # `clone` of an `AddHandlerEvent`/`RemoveHandlerEvent` copies.
+    #
+    # A field-for-field copy rather than a `new`: the wrapper is often held
+    # in the erased `Wrapper(Proc(Event, Nil))` spelling, where constructing
+    # one would record `Event` as the `event_type` and let the clone be
+    # registered for events its handler cannot take.
     def clone : self
-      self.class.new(@handler, @once, @async, @at, @handler_hash)
+      dup
     end
 
     # Dispatches *obj* to the wrapped handler and returns *obj*.

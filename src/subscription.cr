@@ -12,6 +12,10 @@ module EventHandler
   class Subscription
     @cancel : Proc(::Nil)?
 
+    # Asks the emitter whether the handler is still registered; `nil` for a
+    # plain teardown block, which has nothing to ask.
+    @live : Proc(::Bool)?
+
     # The `Wrapper` behind this subscription (in the erased
     # `Wrapper(Proc(Event, Nil))` form `AddHandlerEvent` listeners also get),
     # once the generated `on`/`once` returned it or `#on` armed it. `nil` for
@@ -26,7 +30,10 @@ module EventHandler
     # This is the form the generated `EventHandler#on`/`#once` return, so
     # every subscription — whether built here or handed out by `on` — tears
     # down through the same idempotent `#off`.
-    def initialize(@cancel : Proc(::Nil), @wrapper = nil)
+    #
+    # *live*, when given, reports whether the handler is still installed
+    # (see `#live?`).
+    def initialize(@cancel : Proc(::Nil), @wrapper = nil, @live : Proc(::Bool)? = nil)
     end
 
     # The registered handler's identity hash (`Wrapper#handler_hash`), for the
@@ -46,6 +53,16 @@ module EventHandler
       !@cancel.nil?
     end
 
+    # Whether the handler behind this subscription is still installed on its
+    # emitter. Unlike `#active?` this does track the handler: it turns false
+    # once a `once` handler has fired, or the handler was removed through
+    # `off(type, ...)`/`remove_all_handlers`, as well as after `#off`. A
+    # plain teardown block (`Subscriptions#add`) is live until its `#off`.
+    def live? : Bool
+      return false unless @cancel
+      (l = @live) ? l.call : true
+    end
+
     # Subscribes *block* to event *type* on *target*, first cancelling any
     # handler this slot already holds. Returns `self`.
     def on(target, type : T.class, once = false, async = ::EventHandler.async?,
@@ -56,12 +73,18 @@ module EventHandler
       sub = target.on(type, once: once, async: async, at: at, &block)
       @cancel = sub.cancel
       @wrapper = sub.wrapper
+      @live = sub.live
       self
     end
 
     # The cancel closure, for a slot taking over this subscription (see `#on`).
     protected def cancel : Proc(::Nil)?
       @cancel
+    end
+
+    # :ditto:
+    protected def live : Proc(::Bool)?
+      @live
     end
 
     # Removes the handler if one is installed. Idempotent.
@@ -89,8 +112,21 @@ module EventHandler
   # subscription and returns it, so a single one can still be re-armed or
   # cancelled individually; `#add` tracks a subscription made elsewhere, or a
   # plain teardown block; `#off` cancels every remaining one, idempotently.
+  #
+  # Subscriptions that are no longer live (`Subscription#live?`: cancelled
+  # individually, or a `once` handler that fired) are dropped from the bag as
+  # it grows, so a long-lived bag does not accumulate them, nor keep their
+  # handlers' closures alive.
+  #
+  # Like the standard collections, neither class is synchronized: share one
+  # between fibers running in parallel only under your own lock. (The
+  # emitter's `on`/`off`/`emit` are safe to call in parallel.)
   class Subscriptions
     @subs = [] of Subscription
+
+    # Bag size at which the next `#add` prunes dead subscriptions. Doubles
+    # with the live population, keeping the pruning amortized.
+    @prune_at = 16
 
     # Subscribes *block* to *type* on *target*, tracking it for a later bulk
     # `#off`. Returns the created `Subscription`.
@@ -116,6 +152,10 @@ module EventHandler
     # Tracks an existing *subscription*, such as one `EventHandler#on`
     # returned, for the bag's bulk `#off`. Returns it.
     def add(subscription : Subscription) : Subscription
+      if @subs.size >= @prune_at
+        @subs.select!(&.live?)
+        @prune_at = {16, @subs.size * 2}.max
+      end
       @subs << subscription
       subscription
     end
@@ -148,7 +188,7 @@ module EventHandler
       empty?
     end
 
-    # Whether the bag holds no subscriptions.
+    # Whether the bag holds no subscriptions. Dead ones not yet pruned count.
     def empty? : Bool
       @subs.empty?
     end

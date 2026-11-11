@@ -113,7 +113,18 @@ class_record ClickedEvent < ::EventHandler::Event, x : Int32, y : Int32
 
 (`class_record` is EventHandler's variant of Crystal's macro `record`; it creates classes instead of structs.)
 
-If additional modification to the class is necessary, class can be reopened:
+If additional modification to the class is necessary, `event` accepts a block
+that becomes part of the class body:
+
+```crystal
+EventHandler.event ClickedEvent, x : Int32, y : Int32 do
+  def origin?
+    x == 0 && y == 0
+  end
+end
+```
+
+Or the class can be reopened:
 
 ```crystal
 EventHandler.event ClickedEvent, x : Int32, y : Int32
@@ -338,13 +349,27 @@ slot.active? # => true
 slot.off     # cancels; safe to call twice
 ```
 
+`#active?` only tells whether the subscription has been cancelled through its
+own `#off`. To ask whether the handler is still installed on the emitter —
+false as well once a `once:` handler has fired, or the handler was removed
+through `off(type, ...)`/`remove_all_handlers` — use `#live?`:
+
+```crystal
+subscription = my.once(ClickedEvent) { |e| p "Hello" }
+my.emit ClickedEvent, 1, 2
+subscription.active? # => true
+subscription.live?   # => false
+```
+
 Several subscriptions torn down together can be collected in an
 `EventHandler::Subscriptions` bag: its `#on(target, type) { }` adds a tracked
 subscription (returned, so it can still be cancelled individually), its
 `#add` tracks a subscription made elsewhere or a plain teardown block (a
 listener registered outside EventHandler, a timer, a file watcher), and its
 `#off` cancels every remaining one (all of them even if a teardown raises; the
-first exception is re-raised afterwards). Both classes also answer to
+first exception is re-raised afterwards). Subscriptions that are no longer
+live are dropped from the bag as it grows, so a long-lived bag does not
+accumulate them. Both classes also answer to
 `dispose`/`disposed?`, for callers whose teardown vocabulary comes from
 reactive stacks.
 
@@ -529,6 +554,12 @@ To check for handlers without copying anything, use `has_handlers?`:
 my.has_handlers?(ClickedEvent) # => true/false, allocation-free
 ```
 
+And to check for one particular handler, by its `Wrapper`:
+
+```crystal
+my.has_handler?(ClickedEvent, subscription.wrapper.not_nil!) # => true/false
+```
+
 ### Removing event handlers
 
 Event handlers can be removed in one of six ways.
@@ -653,7 +684,9 @@ There are three built-in events:
 
 `RemoveHandlerEvent` - Event emitted after a handler is removed from any event, including itself.
 
-`AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments. It is not emitted for `AddHandlerEvent` and `RemoveHandlerEvent`, which reach only their own handlers, nor for an `AnyEvent` emitted directly.
+`AnyEvent` - Event emitted on any event. Adding a handler for this event allows listening for all emitted events and their arguments. It is not emitted for the `AddHandlerEvent` and `RemoveHandlerEvent` that `on`/`off` raise themselves, which reach only their own handlers (one emitted explicitly with `emit` is an ordinary event and does reach `AnyEvent` handlers), nor for an `AnyEvent` emitted directly.
+
+If an `AddHandlerEvent` handler raises, the registration that triggered it is undone (announced with a `RemoveHandlerEvent`) and the exception propagates from `on`.
 
 As mentioned, a wrapper object is implicitly created around a handler on every `on`, to encapsulate the handler and its
 subscription options (the values of `once?`, `async?`, and `at`).
@@ -661,6 +694,13 @@ subscription options (the values of `once?`, `async?`, and `at`).
 *type* the handler was added to or removed from, and `wrapper`, the handler's
 `Wrapper` object.
 This allows listeners on these two meta events full insight into the added or removed handlers and their subscription data.
+
+The `event` field can be passed straight back to the emitter: `on(type, wrapper)`, `off(type, wrapper)`, `handlers(type)` and `has_handlers?(type)` also accept an event type only known at run time. Likewise `emit(event)` accepts an event held as a plain `EventHandler::Event` (an `Array(EventHandler::Event)` element, or `AnyEvent#event`) and dispatches on its actual class:
+
+```crystal
+# Forward everything emitted on `a` to `b`
+a.on(EventHandler::AnyEvent) { |any| b.emit any.event }
+```
 
 ### Channels
 
@@ -676,6 +716,10 @@ channel = Channel(ClickedEvent).new
 # With an aliased type
 channel = ClickedEvent::Channel.new
 ```
+
+(Inside an event class body the alias shadows the top-level `Channel`, so an
+event field that holds a channel is declared with a leading `::`, as in
+`EventHandler.event Request, reply : ::Channel(String)`.)
 
 Invoking `on` with a Channel argument will implicitly create a handler that
 forwards emitted events to the Channel:
@@ -774,6 +818,10 @@ event into the Channel.
 will block on `channel.send` or it will execute it in
 a new fiber. The default value is `false` (`EventHandler.async_send?`).
 
+A wait ends only when the event is emitted. If its implicit handler is removed
+first (`remove_all_handlers`, `off(type)`), the waiting fiber stays parked, so
+tear down an emitter that may have waiters only after they have been released.
+
 ### Subclassing
 
 Event classes can be subclassed with no restrictions:
@@ -855,6 +903,15 @@ that is only created on its first `on`. An emitter that never subscribes to an
 event type holds nothing for it, and the no-listener `emit` fast path is a
 single bit test. The last `off` for a type drops its list again, so
 `has_handlers?` is exact and allocation-free.
+
+Fibers run in parallel on several threads, and an emitter may be used from all
+of them: `on`/`off`/`remove_all_handlers` serialize on a per-emitter lock, and
+`emit` reads without locking — the map and (under copy-on-write) the lists are
+never modified once published, and each change is published atomically, so an
+emit on another thread sees either the previous handlers or the new ones. A
+handler added in parallel with an emit may or may not be called by it.
+`Subscription` and `Subscriptions` objects are, like the standard collections,
+not synchronized themselves.
 
 This matters for programs with many emitters and many event types (a UI with
 thousands of widgets and a few hundred event classes): the alternative, one

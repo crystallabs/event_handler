@@ -3,11 +3,13 @@ module EventHandler
 
   # Compile-time switch for the "skip emit when nothing is subscribed" fast path.
   #
-  # When `true` (default), `emit`/`_emit` return immediately if the event has no
-  # registered handlers (neither its concrete type nor the catch-all `AnyEvent`):
-  # the event object is not built, the handler store is not consulted and
-  # (without copy-on-write) the reentrant mutex is not taken. Matters for
-  # emit-heavy workloads (e.g. a UI render loop) with no listeners.
+  # When `true` (default), `emit` returns immediately if the event has no
+  # registered handlers (neither its concrete type nor the catch-all
+  # `AnyEvent`), and the low-level `_emit` if its own type has none: the
+  # handler store is not consulted, (without copy-on-write) the reentrant
+  # mutex is not taken, and `emit(type, *args)` does not build the event
+  # object. Matters for emit-heavy workloads (e.g. a UI render loop) with no
+  # listeners.
   #
   # The fast path tests the emitter's subscription bitmask without holding the
   # lock — a benign race already inherent to the snapshot design (a handler
@@ -26,15 +28,17 @@ module EventHandler
   # hot path.
   #
   # Because the captured array is never mutated, `_emit` reads its snapshot
-  # without taking the lock — a single atomic pointer load. The mutex only
-  # serializes writers against each other (their dup→mutate→swap is a
-  # read-modify-write that would otherwise lose updates).
+  # without taking the lock. The mutex only serializes writers against each
+  # other (their dup→mutate→swap is a read-modify-write that would otherwise
+  # lose updates).
   #
-  # Correctness holds because no array is mutated in place while a concurrent
-  # (or reentrant) `_emit` might be iterating it: a writer always publishes a
-  # new array, and an in-flight emit keeps iterating its captured snapshot —
-  # the same semantics the previous `dup` provided. Relies on pointer-sized
-  # reference assignment being atomic (true on all supported targets).
+  # Correctness holds because nothing published is mutated in place while a
+  # concurrent (or reentrant) `_emit` might be iterating it: a writer always
+  # publishes a new array, and an in-flight emit keeps iterating its captured
+  # snapshot — the same semantics the previous `dup` provided. Fibers run in
+  # parallel on several threads by default, so the publication is an atomic
+  # release store read back with an acquire load: an emit on another thread
+  # sees either the previous list or the complete new one.
   #
   # Set to `false` to restore the original in-place mutation + per-emit `dup`;
   # when disabled the copy-on-write code is not generated.

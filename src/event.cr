@@ -26,10 +26,15 @@ module EventHandler
   #   end
   # end
   # ```
+  #
+  # Every event class gets the aliases `Handler`, `Wrapper` and `Channel`
+  # (e.g. `ClickedEvent::Channel` is `::Channel(ClickedEvent)`). Inside the
+  # class body they shadow the top-level names, so a field holding a channel
+  # is declared as `reply : ::Channel(String)`, with the leading `::`.
   abstract class Event
     macro inherited
       macro finished
-        alias Handler = ::Proc(\{{@type}}, Nil)
+        alias Handler = ::Proc(::\{{@type}}, ::Nil)
         alias Wrapper = ::EventHandler::Wrapper(Handler)
         alias Channel = ::Channel(self)
       end

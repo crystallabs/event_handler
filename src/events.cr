@@ -3,9 +3,10 @@ module EventHandler
   # Adding a handler for this event allows listening for all emitted events
   # and their arguments.
   #
-  # Not emitted for the handler meta-events `AddHandlerEvent` and
-  # `RemoveHandlerEvent` (those are dispatched to their own handlers only),
-  # nor for an `AnyEvent` emitted directly.
+  # Not emitted for the `AddHandlerEvent`/`RemoveHandlerEvent` the shard
+  # itself raises on `on`/`off` (those are dispatched to their own handlers
+  # only; one emitted explicitly with `emit` is an ordinary event and does
+  # reach `AnyEvent` handlers), nor for an `AnyEvent` emitted directly.
   event AnyEvent,
     event : ::EventHandler::Event
 
