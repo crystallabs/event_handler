@@ -824,7 +824,7 @@ module EventHandler
         #
         # Only synchronous handlers are covered; an asynchronous one runs in
         # its own fiber, which already contains its failure.
-        def emit_isolated(type : \{{event_class}}.class, event : \{{event_class}}) : ::Array(::Exception)?
+        def emit_rescued(type : \{{event_class}}.class, event : \{{event_class}}) : ::Array(::Exception)?
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
             return unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
           \{% end %}
@@ -832,19 +832,19 @@ module EventHandler
           \{% if idx != any_idx %}
             \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
               if _event_bit?(\{{ any_idx }})
-                _emit_isolated ::EventHandler::AnyEvent, ::EventHandler::AnyEvent.new(event), errors
+                _emit_rescued ::EventHandler::AnyEvent, ::EventHandler::AnyEvent.new(event), errors
               end
             \{% else %}
-              _emit_isolated ::EventHandler::AnyEvent, ::EventHandler::AnyEvent.new(event), errors
+              _emit_rescued ::EventHandler::AnyEvent, ::EventHandler::AnyEvent.new(event), errors
             \{% end %}
           \{% end %}
-          _emit_isolated \{{ event_class }}, event, errors
+          _emit_rescued \{{ event_class }}, event, errors
           errors unless errors.empty?
         end
 
         # `_emit` with each handler's exception caught into *errors*: the
         # same snapshot dispatch and once-handler claim.
-        protected def _emit_isolated(type : \{{event_class}}.class, event : \{{event_class}}, errors : ::Array(::Exception)) : ::Nil
+        protected def _emit_rescued(type : \{{event_class}}.class, event : \{{event_class}}, errors : ::Array(::Exception)) : ::Nil
           \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
             handlers = \{{ handlers_list.id }}
           \{% else %}
@@ -864,11 +864,11 @@ module EventHandler
           end
         end
         # :ditto:
-        def emit_isolated(type : \{{event_class}}.class, *args) : ::Array(::Exception)?
+        def emit_rescued(type : \{{event_class}}.class, *args) : ::Array(::Exception)?
           \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
             return unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
           \{% end %}
-          emit_isolated type, \{{event_class}}.new(*args)
+          emit_rescued type, \{{event_class}}.new(*args)
         end
 
       \{% end %}

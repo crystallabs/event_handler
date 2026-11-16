@@ -463,12 +463,12 @@ of the other two forms.
 With `emit`, a handler that raises ends the dispatch: the exception
 propagates to the emitter and the handlers after it do not run. Where one
 failing listener must not starve the rest (a teardown notification, say),
-use `emit_isolated`. It takes the event class followed by the event object
+use `emit_rescued`. It takes the event class followed by the event object
 or its arguments, runs every synchronous handler, and returns the exceptions
 raised in dispatch order, or `nil` if none was:
 
 ```crystal
-if errors = my.emit_isolated ClickedEvent, 10, 20
+if errors = my.emit_rescued ClickedEvent, 10, 20
   errors.each { |ex| Log.error(exception: ex) { "handler failed" } }
 end
 ```
