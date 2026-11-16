@@ -420,7 +420,9 @@ module EventHandler
         # last name component (`::Clicked` and `Foo::Clicked`): both would
         # define the same method and the later one would silently win.
         \{% sugar_name = "on_" + name.split("::").last.underscore %}
-        \{% if sugar_names.select { |n| n == sugar_name }.size == 1 %}
+        \{% sugar_enclosing = name.split("::")[0..-2].join("::") %}
+        \{% sugar_nested = !sugar_enclosing.empty? && names.includes?(sugar_enclosing) %}
+        \{% if !sugar_nested && sugar_names.select { |n| n == sugar_name }.size == 1 %}
           # Options are keyword-only (bare `*`, like the block overload of
           # `on`): with untyped positionals an emitter's own same-name sugar
           # taking positional args (e.g. Crysterm's `on_key('q', :escape)`)
@@ -811,6 +813,62 @@ module EventHandler
           \{% end %}
           event = \{{event_class}}.new *args
           emit \{{ event_class }}, event
+        end
+
+        # Emits *event* of *type* like `emit`, except that a handler which
+        # raises does not keep the handlers after it from running. For an
+        # emitter whose own bookkeeping rides on the event (a teardown
+        # notification, say), where one failing listener must not starve the
+        # rest. Returns the exceptions raised, in dispatch order, or `nil`
+        # when no handler raised.
+        #
+        # Only synchronous handlers are covered; an asynchronous one runs in
+        # its own fiber, which already contains its failure.
+        def emit_isolated(type : \{{event_class}}.class, event : \{{event_class}}) : ::Array(::Exception)?
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            return unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
+          \{% end %}
+          errors = [] of ::Exception
+          \{% if idx != any_idx %}
+            \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+              if _event_bit?(\{{ any_idx }})
+                _emit_isolated ::EventHandler::AnyEvent, ::EventHandler::AnyEvent.new(event), errors
+              end
+            \{% else %}
+              _emit_isolated ::EventHandler::AnyEvent, ::EventHandler::AnyEvent.new(event), errors
+            \{% end %}
+          \{% end %}
+          _emit_isolated \{{ event_class }}, event, errors
+          errors unless errors.empty?
+        end
+
+        # `_emit` with each handler's exception caught into *errors*: the
+        # same snapshot dispatch and once-handler claim.
+        protected def _emit_isolated(type : \{{event_class}}.class, event : \{{event_class}}, errors : ::Array(::Exception)) : ::Nil
+          \{% if ::EventHandler::EMIT_COPY_ON_WRITE %}
+            handlers = \{{ handlers_list.id }}
+          \{% else %}
+            handlers = _event_handler_mutex.synchronize { \{{ handlers_list.id }}.try &.dup }
+          \{% end %}
+          return unless handlers
+
+          handlers.each do |handler|
+            if handler.once?
+              next unless _off_first(\{{ event_class }}) { |h| h.same?(handler) }
+            end
+            begin
+              handler.call(event, nil)
+            rescue ex
+              errors << ex
+            end
+          end
+        end
+        # :ditto:
+        def emit_isolated(type : \{{event_class}}.class, *args) : ::Array(::Exception)?
+          \{% if ::EventHandler::EMIT_SKIP_WHEN_NO_HANDLERS %}
+            return unless _event_bit?(\{{ idx }}) || _event_bit?(\{{ any_idx }})
+          \{% end %}
+          emit_isolated type, \{{event_class}}.new(*args)
         end
 
       \{% end %}

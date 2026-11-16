@@ -460,6 +460,19 @@ type that depends on whether anyone happens to be listening is not a usable
 contract. To get the event object back, construct it yourself and use one
 of the other two forms.
 
+With `emit`, a handler that raises ends the dispatch: the exception
+propagates to the emitter and the handlers after it do not run. Where one
+failing listener must not starve the rest (a teardown notification, say),
+use `emit_isolated`. It takes the event class followed by the event object
+or its arguments, runs every synchronous handler, and returns the exceptions
+raised in dispatch order, or `nil` if none was:
+
+```crystal
+if errors = my.emit_isolated ClickedEvent, 10, 20
+  errors.each { |ex| Log.error(exception: ex) { "handler failed" } }
+end
+```
+
 ### Handling events
 
 As mentioned, handlers always receive one argument - the event object with packed arguments.
